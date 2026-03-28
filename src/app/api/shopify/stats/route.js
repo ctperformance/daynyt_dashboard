@@ -33,8 +33,10 @@ export async function GET(request) {
     }
 
     const { access_token, provider_account_id: shop, provider_metadata } = integration;
-    const apiVersion = '2024-01';
+    const apiVersion = '2025-01';
     const baseApiUrl = `https://${shop}/admin/api/${apiVersion}`;
+
+    console.log('Shopify API call:', { shop, apiVersion, baseApiUrl });
 
     const since = new Date();
     since.setDate(since.getDate() - days);
@@ -47,8 +49,13 @@ export async function GET(request) {
     });
 
     if (!ordersRes.ok) {
-      const err = await ordersRes.json().catch(() => ({}));
-      console.error('Shopify orders API error:', err);
+      const errText = await ordersRes.text().catch(() => 'no body');
+      console.error('Shopify orders API error:', {
+        status: ordersRes.status,
+        statusText: ordersRes.statusText,
+        url: ordersUrl,
+        body: errText,
+      });
 
       if (ordersRes.status === 401) {
         return NextResponse.json(
@@ -58,7 +65,7 @@ export async function GET(request) {
       }
 
       return NextResponse.json(
-        { error: 'Failed to fetch Shopify orders' },
+        { error: 'Failed to fetch Shopify orders', details: errText },
         { status: 502 }
       );
     }

@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ease-bg: #0a0a0a;
+  --ease-card: #141414;
+  --ease-border: #262626;
+  --ease-cream: #fbf8f1;
+  --ease-accent: #d4a853;
+}
+
+body {
+  background: var(--ease-bg);
+  color: var(--ease-cream);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--ease-bg); }
+::-webkit-scrollbar-thumb { background: var(--ease-border); border-radius: 3px; }

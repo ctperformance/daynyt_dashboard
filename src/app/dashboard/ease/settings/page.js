@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { openOAuthPopup } from '@/lib/oauth-popup';
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_PROJECT_ID;
 
@@ -124,10 +125,23 @@ function SettingsContent() {
     }
   };
 
+  const handleOAuthPopup = (provider, url) => {
+    openOAuthPopup(url || `/api/auth/${provider}`, {
+      onSuccess: (connectedProvider) => {
+        const providerName = connectedProvider === 'meta' ? 'Meta Ads' : connectedProvider === 'shopify' ? 'Shopify' : connectedProvider;
+        setToast({ type: 'success', message: `${providerName} erfolgreich verbunden!` });
+        fetchStatus();
+      },
+      onError: (error) => {
+        setToast({ type: 'error', message: `Verbindungsfehler: ${error}` });
+      },
+    });
+  };
+
   const handleShopifyConnect = (e) => {
     e.preventDefault();
     if (shopDomain) {
-      window.location.href = `/api/auth/shopify?shop=${encodeURIComponent(shopDomain)}`;
+      handleOAuthPopup('shopify', `/api/auth/shopify?shop=${encodeURIComponent(shopDomain)}`);
     }
   };
 
@@ -242,12 +256,12 @@ function SettingsContent() {
                         Verbinden
                       </button>
                     ) : (
-                      <a
-                        href={`/api/auth/${integration.provider}`}
+                      <button
+                        onClick={() => handleOAuthPopup(integration.provider)}
                         className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1 rounded-full transition-colors"
                       >
                         Verbinden
-                      </a>
+                      </button>
                     )}
                   </div>
                 </div>

@@ -7,7 +7,7 @@ const PROVIDERS = {
     authorizationUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
     tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
     revokeUrl: 'https://graph.facebook.com/v19.0/me/permissions',
-    scopes: ['ads_read', 'read_insights', 'business_management'],
+    scopes: ['ads_read', 'ads_management', 'business_management'],
     clientId: process.env.META_APP_ID,
     clientSecret: process.env.META_APP_SECRET,
   },

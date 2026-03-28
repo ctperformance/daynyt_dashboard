@@ -1,10 +1,10 @@
 'use client';
 
-import Link from 'next/link';
+import { openOAuthPopup } from '@/lib/oauth-popup';
 
 /**
  * Reusable "connect this integration" prompt component.
- * Shows when an integration is not yet connected.
+ * Opens OAuth in a popup window instead of same-tab redirect.
  */
 export default function ConnectPrompt({
   provider,
@@ -16,6 +16,23 @@ export default function ConnectPrompt({
   onConnect,
   showShopInput,
 }) {
+  const handleConnect = () => {
+    const url = connectUrl || `/api/auth/${provider}`;
+    openOAuthPopup(url, {
+      onSuccess: (connectedProvider) => {
+        if (onConnect) {
+          onConnect(connectedProvider);
+        } else {
+          // Reload to show connected state
+          window.location.reload();
+        }
+      },
+      onError: (error) => {
+        alert(`Verbindungsfehler: ${error}`);
+      },
+    });
+  };
+
   return (
     <div className="bg-ease-card border border-ease-border rounded-xl p-8 text-center max-w-lg mx-auto">
       <div className="w-16 h-16 bg-ease-accent/10 rounded-2xl flex items-center justify-center text-3xl text-ease-accent mx-auto mb-5">
@@ -42,26 +59,38 @@ export default function ConnectPrompt({
 
       {/* Shopify store input */}
       {showShopInput ? (
-        <ShopifyConnectForm />
+        <ShopifyConnectForm onConnect={onConnect} />
       ) : (
-        <a
-          href={connectUrl || `/api/auth/${provider}`}
+        <button
+          onClick={handleConnect}
           className="inline-flex items-center gap-2 bg-ease-accent text-black font-medium text-sm px-6 py-2.5 rounded-lg hover:bg-ease-accent/90 transition-colors"
         >
           {title} verbinden
-        </a>
+        </button>
       )}
     </div>
   );
 }
 
-function ShopifyConnectForm() {
+function ShopifyConnectForm({ onConnect }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const shop = formData.get('shop');
     if (shop) {
-      window.location.href = `/api/auth/shopify?shop=${encodeURIComponent(shop)}`;
+      const url = `/api/auth/shopify?shop=${encodeURIComponent(shop)}`;
+      openOAuthPopup(url, {
+        onSuccess: (connectedProvider) => {
+          if (onConnect) {
+            onConnect(connectedProvider);
+          } else {
+            window.location.reload();
+          }
+        },
+        onError: (error) => {
+          alert(`Verbindungsfehler: ${error}`);
+        },
+      });
     }
   };
 

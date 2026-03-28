@@ -39,11 +39,13 @@ export async function POST(request) {
     }
 
     // Delete from database
-    const { error: dbError } = await supabase
+    const { error: dbError, count } = await supabase
       .from('integrations_oauth')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('project_id', project_id)
       .eq('provider', provider);
+
+    console.log('Disconnect result:', { provider, project_id, count, error: dbError?.message || 'none' });
 
     if (dbError) {
       console.error('Failed to delete integration:', dbError);
@@ -53,7 +55,7 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deleted: count });
   } catch (error) {
     console.error('Disconnect error:', error);
     return NextResponse.json(

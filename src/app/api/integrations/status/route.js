@@ -18,15 +18,10 @@ export async function GET(request) {
 
     const supabase = createServiceClient();
 
-    console.log('Status check - Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log('Status check - Project ID:', projectId);
-
     const { data, error } = await supabase
       .from('integrations_oauth')
       .select('provider, provider_account_id, provider_metadata, connected_at, scope, token_expires_at')
       .eq('project_id', projectId);
-
-    console.log('Status check - rows found:', data?.length, 'error:', error?.message || 'none');
 
     if (error) {
       console.error('Failed to fetch integration status:', error);
@@ -53,13 +48,7 @@ export async function GET(request) {
       };
     }
 
-    return NextResponse.json({
-      ...status,
-      _debug: {
-        supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        rows_found: data?.length || 0,
-      },
-    });
+    return NextResponse.json(status);
   } catch (error) {
     console.error('Integration status error:', error);
     return NextResponse.json(

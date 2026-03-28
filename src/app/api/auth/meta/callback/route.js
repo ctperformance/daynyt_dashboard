@@ -46,7 +46,7 @@ export async function GET(request) {
 
     // Fetch user's ad accounts
     const adAccountsRes = await fetch(
-      `https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,account_id,currency,timezone_name&access_token=${accessToken}`
+      `https://graph.facebook.com/v21.0/me/adaccounts?fields=id,name,account_id,currency,timezone_name&access_token=${accessToken}`
     );
     const adAccountsData = adAccountsRes.ok ? await adAccountsRes.json() : { data: [] };
 
@@ -56,7 +56,7 @@ export async function GET(request) {
 
     try {
       const llRes = await fetch(
-        `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&fb_exchange_token=${accessToken}`
+        `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&fb_exchange_token=${accessToken}`
       );
       if (llRes.ok) {
         const llData = await llRes.json();

@@ -46,8 +46,6 @@ export async function POST(request) {
       .eq('project_id', project_id)
       .eq('provider', provider);
 
-    console.log('Disconnect result:', { provider, project_id, count, error: dbError?.message || 'none' });
-
     if (dbError) {
       console.error('Failed to delete integration:', dbError);
       return NextResponse.json(

@@ -53,7 +53,7 @@ export async function GET(request) {
     const fields = 'campaign_name,campaign_id,spend,impressions,clicks,actions,action_values,cpc,cpm,ctr,frequency';
     const timeRange = JSON.stringify({ since: sinceStr, until: untilStr });
 
-    const insightsUrl = `https://graph.facebook.com/v19.0/${adAccountId}/insights?fields=${fields}&time_range=${timeRange}&level=campaign&limit=50&access_token=${access_token}`;
+    const insightsUrl = `https://graph.facebook.com/v21.0/${adAccountId}/insights?fields=${fields}&time_range=${timeRange}&level=campaign&limit=50&access_token=${access_token}`;
 
     const insightsRes = await fetch(insightsUrl);
 

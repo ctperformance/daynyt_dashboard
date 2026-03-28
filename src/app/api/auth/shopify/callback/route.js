@@ -90,7 +90,7 @@ export async function GET(request) {
     // Fetch shop info
     let shopInfo = {};
     try {
-      const shopRes = await fetch(`https://${shop}/admin/api/2024-01/shop.json`, {
+      const shopRes = await fetch(`https://${shop}/admin/api/2025-01/shop.json`, {
         headers: { 'X-Shopify-Access-Token': accessToken },
       });
       if (shopRes.ok) {

@@ -4,9 +4,9 @@
 
 const PROVIDERS = {
   meta: {
-    authorizationUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
-    tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
-    revokeUrl: 'https://graph.facebook.com/v19.0/me/permissions',
+    authorizationUrl: 'https://www.facebook.com/v21.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v21.0/oauth/access_token',
+    revokeUrl: 'https://graph.facebook.com/v21.0/me/permissions',
     scopes: ['ads_read', 'ads_management', 'business_management'],
     clientId: process.env.META_APP_ID,
     clientSecret: process.env.META_APP_SECRET,
@@ -48,6 +48,7 @@ export function getAuthUrl(provider, state, options = {}) {
       scope: config.scopes.join(','),
       state,
       response_type: 'code',
+      auth_type: 'reauthorize',
     });
     return `${config.authorizationUrl}?${params.toString()}`;
   }

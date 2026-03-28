@@ -18,6 +18,11 @@ export default function ConnectPrompt({
 }) {
   const handleConnect = () => {
     const url = connectUrl || `/api/auth/${provider}`;
+    // For Shopify Custom Distribution, open in same window (Shopify blocks popups)
+    if (provider === 'shopify' && !showShopInput) {
+      window.location.href = url;
+      return;
+    }
     openOAuthPopup(url, {
       onSuccess: (connectedProvider) => {
         if (onConnect) {

@@ -113,7 +113,7 @@ export default function ShopifyPage() {
             'Conversion Rate & Cart Abandonment',
             'Quiz \u2192 Kauf Attribution',
           ]}
-          showShopInput
+          showShopInput={!process.env.NEXT_PUBLIC_SHOPIFY_CUSTOM_DIST}
         />
       )}
 

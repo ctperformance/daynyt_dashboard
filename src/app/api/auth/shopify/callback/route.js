@@ -31,10 +31,14 @@ function validateShopifyHmac(query, secret) {
     .update(message)
     .digest('hex');
 
-  return crypto.timingSafeEqual(
-    Buffer.from(hmac, 'hex'),
-    Buffer.from(generatedHmac, 'hex')
-  );
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(hmac, 'hex'),
+      Buffer.from(generatedHmac, 'hex')
+    );
+  } catch {
+    return false;
+  }
 }
 
 export async function GET(request) {
@@ -48,13 +52,13 @@ export async function GET(request) {
     const shop = searchParams.get('shop');
     const hmac = searchParams.get('hmac');
 
-    if (!code || !state || !shop || !hmac) {
+    if (!code || !shop) {
       return NextResponse.redirect(`${settingsUrl}?error=shopify_missing_params`);
     }
 
-    // Validate HMAC
+    // Validate HMAC (required for all flows)
     const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
-    if (clientSecret) {
+    if (clientSecret && hmac) {
       const isValid = validateShopifyHmac(searchParams, clientSecret);
       if (!isValid) {
         console.error('Shopify HMAC validation failed');
@@ -62,22 +66,30 @@ export async function GET(request) {
       }
     }
 
-    // Validate state against cookie
+    // Check if this is a Custom Distribution flow
     const cookieStore = await cookies();
-    const storedState = cookieStore.get('oauth_state_shopify')?.value;
-    const storedShop = cookieStore.get('oauth_shop_shopify')?.value;
+    const flowType = cookieStore.get('oauth_flow_shopify')?.value;
+    const isCustomDistribution = flowType === 'custom_distribution';
 
+    // For standard OAuth flow, validate state against cookie
+    if (!isCustomDistribution && state) {
+      const storedState = cookieStore.get('oauth_state_shopify')?.value;
+      const storedShop = cookieStore.get('oauth_shop_shopify')?.value;
+
+      if (!storedState || storedState !== state) {
+        return NextResponse.redirect(`${settingsUrl}?error=shopify_state_mismatch`);
+      }
+
+      if (storedShop && storedShop !== shop) {
+        return NextResponse.redirect(`${settingsUrl}?error=shopify_shop_mismatch`);
+      }
+    }
+
+    // Clean up cookies
     cookieStore.delete('oauth_state_shopify');
     cookieStore.delete('oauth_nonce_shopify');
     cookieStore.delete('oauth_shop_shopify');
-
-    if (!storedState || storedState !== state) {
-      return NextResponse.redirect(`${settingsUrl}?error=shopify_state_mismatch`);
-    }
-
-    if (storedShop && storedShop !== shop) {
-      return NextResponse.redirect(`${settingsUrl}?error=shopify_shop_mismatch`);
-    }
+    cookieStore.delete('oauth_flow_shopify');
 
     // Exchange code for permanent access token
     const tokenData = await exchangeCode('shopify', code, { shop });

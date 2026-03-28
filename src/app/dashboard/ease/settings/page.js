@@ -29,7 +29,8 @@ const INTEGRATIONS_CONFIG = [
     icon: '\u2B21',
     provider: 'shopify',
     description: 'Shopify Admin API',
-    needsShopInput: true,
+    // Custom Distribution: no shop input needed, the install URL handles it
+    needsShopInput: !process.env.NEXT_PUBLIC_SHOPIFY_CUSTOM_DIST,
   },
   {
     key: 'email',
@@ -250,6 +251,16 @@ function SettingsContent() {
                         onClick={() => {
                           const el = document.getElementById('shopify-input');
                           if (el) el.focus();
+                        }}
+                        className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1 rounded-full transition-colors"
+                      >
+                        Verbinden
+                      </button>
+                    ) : integration.provider === 'shopify' ? (
+                      <button
+                        onClick={() => {
+                          // Custom Distribution: redirect in same window (Shopify blocks popups)
+                          window.location.href = '/api/auth/shopify';
                         }}
                         className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1 rounded-full transition-colors"
                       >

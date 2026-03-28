@@ -10,6 +10,24 @@ export async function GET(request) {
   const settingsUrl = `${baseUrl}/dashboard/ease/settings`;
 
   try {
+    const customInstallUrl = process.env.SHOPIFY_INSTALL_URL;
+
+    // Custom Distribution: redirect directly to the install link
+    if (customInstallUrl) {
+      // Set a cookie so we know this is a Custom Distribution flow
+      const cookieStore = await cookies();
+      cookieStore.set('oauth_flow_shopify', 'custom_distribution', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 600,
+        path: '/',
+      });
+
+      return NextResponse.redirect(customInstallUrl);
+    }
+
+    // Standard OAuth flow (for public/unlisted apps)
     const { searchParams } = new URL(request.url);
     const shop = searchParams.get('shop');
 

@@ -5,6 +5,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 /**
  * Validate Shopify HMAC to ensure the callback is authentic.

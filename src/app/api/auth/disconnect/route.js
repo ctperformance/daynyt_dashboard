@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { revokeToken } from '@/lib/oauth';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export async function POST(request) {
   try {

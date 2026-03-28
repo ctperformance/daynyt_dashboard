@@ -4,6 +4,7 @@ import { exchangeCode } from '@/lib/oauth';
 import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export async function GET(request) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';

@@ -52,7 +52,13 @@ export async function GET(request) {
       };
     }
 
-    return NextResponse.json(status);
+    return NextResponse.json({
+      ...status,
+      _debug: {
+        supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        rows_found: data?.length || 0,
+      },
+    });
   } catch (error) {
     console.error('Integration status error:', error);
     return NextResponse.json(

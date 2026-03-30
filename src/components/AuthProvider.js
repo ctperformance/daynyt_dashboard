@@ -16,16 +16,10 @@ export function AuthProvider({ children }) {
 
   const fetchUserData = useCallback(async (userId) => {
     try {
-      // Fetch organization memberships with org and project data
+      // Fetch organization memberships
       const { data: members, error: membersError } = await supabase
         .from('organization_members')
-        .select(`
-          id,
-          role,
-          organization_id,
-          organizations (id, name, slug),
-          organization_id
-        `)
+        .select('id, role, organization_id')
         .eq('user_id', userId);
 
       if (membersError) {
@@ -50,7 +44,9 @@ export function AuthProvider({ children }) {
           .in('organization_id', orgIds)
           .order('name');
 
-        if (!projError) {
+        if (projError) {
+          console.error('Error fetching projects:', projError);
+        } else {
           setUserProjects(projects || []);
         }
       }

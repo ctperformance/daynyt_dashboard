@@ -84,16 +84,6 @@ export default function DashboardLayout({ children }) {
 
         {/* User Info + Sign Out */}
         <div className="px-3 py-4 border-t border-ease-border space-y-2">
-          {activeProject && (
-            <Link
-              href={`/dashboard/${activeProject.slug}/settings`}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-ease-cream hover:bg-white/5 transition-colors"
-            >
-              <span className="text-base w-5 text-center">&#9881;</span>
-              Einstellungen
-            </Link>
-          )}
-
           {user && (
             <div className="px-3 py-2">
               <div className="flex items-center gap-2.5 mb-2">
@@ -126,16 +116,34 @@ export default function DashboardLayout({ children }) {
   );
 }
 
-const CHANNEL_NAV = [
-  { segment: '', label: 'Übersicht', icon: '⊞' },
-  { segment: '/quiz', label: 'Quiz', icon: '✦' },
-  { segment: '/meta', label: 'Meta Ads', icon: '◎' },
-  { segment: '/google', label: 'Google Ads', icon: '◉' },
-  { segment: '/tiktok', label: 'TikTok Ads', icon: '♪' },
-  { segment: '/snapchat', label: 'Snapchat Ads', icon: '◇' },
-  { segment: '/shopify', label: 'Shopify', icon: '⬡' },
-  { segment: '/email', label: 'E-Mail', icon: '✉' },
-  { segment: '/ads', label: 'Ads Manager', icon: '▶' },
+const NAV_SECTIONS = [
+  {
+    label: 'Kanaele',
+    items: [
+      { segment: '', label: 'Uebersicht', icon: '\u229E' },
+      { segment: '/quiz', label: 'Quiz', icon: '\u2726' },
+      { segment: '/meta', label: 'Meta Ads', icon: '\u25CE' },
+      { segment: '/google', label: 'Google Ads', icon: '\u25C9' },
+      { segment: '/shopify', label: 'Shopify', icon: '\u2B21' },
+      { segment: '/tiktok', label: 'TikTok Ads', icon: '\u266A' },
+      { segment: '/snapchat', label: 'Snapchat Ads', icon: '\u25C7' },
+      { segment: '/email', label: 'E-Mail', icon: '\u2709' },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { segment: '/ads', label: 'Ads Manager', icon: '\u25B6' },
+      { segment: '/creatives', label: 'Ad Creator', icon: '\u270E' },
+      { segment: '/brand', label: 'Brand Hub', icon: '\u25C6' },
+    ],
+  },
+  {
+    label: 'Konto',
+    items: [
+      { segment: '/settings', label: 'Einstellungen', icon: '\u2699' },
+    ],
+  },
 ];
 
 function ClientNav({ projectSlug, pathname }) {
@@ -149,20 +157,26 @@ function ClientNav({ projectSlug, pathname }) {
 
   return (
     <nav className="px-3 py-3 flex flex-col gap-0.5">
-      <p className="text-[10px] uppercase tracking-wider text-gray-600 px-3 mb-2">Kanäle</p>
-      {CHANNEL_NAV.map((item) => (
-        <Link
-          key={item.segment}
-          href={base + item.segment}
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-            isActive(item.segment)
-              ? 'bg-ease-accent/10 text-ease-accent font-medium'
-              : 'text-gray-400 hover:text-ease-cream hover:bg-white/5'
-          }`}
-        >
-          <span className="text-base w-5 text-center">{item.icon}</span>
-          {item.label}
-        </Link>
+      {NAV_SECTIONS.map((section) => (
+        <div key={section.label} className="mb-2">
+          <p className="text-[10px] uppercase tracking-wider text-gray-600 px-3 mb-2">
+            {section.label}
+          </p>
+          {section.items.map((item) => (
+            <Link
+              key={item.segment}
+              href={base + item.segment}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                isActive(item.segment)
+                  ? 'bg-ease-accent/10 text-ease-accent font-medium'
+                  : 'text-gray-400 hover:text-ease-cream hover:bg-white/5'
+              }`}
+            >
+              <span className="text-base w-5 text-center">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
+        </div>
       ))}
     </nav>
   );

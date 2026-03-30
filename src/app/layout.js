@@ -1,14 +1,17 @@
 import './globals.css';
+import { AuthProvider } from '@/components/AuthProvider';
 
 export const metadata = {
-  title: 'EASE Dashboard',
-  description: 'Marketing Dashboard – Quiz Analytics & KPIs',
+  title: 'DAYNYT Dashboard',
+  description: 'Multi-Tenant Marketing Dashboard – Analytics & KPIs',
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="de">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

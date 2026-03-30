@@ -1,5 +1,5 @@
 /**
- * OAuth configuration and helpers for Meta and Shopify integrations.
+ * OAuth configuration and helpers for Meta, Shopify, Google Ads, TikTok, and Snapchat integrations.
  */
 
 const PROVIDERS = {
@@ -18,6 +18,30 @@ const PROVIDERS = {
     scopes: ['read_orders', 'read_products', 'read_analytics', 'read_reports'],
     clientId: process.env.SHOPIFY_CLIENT_ID,
     clientSecret: process.env.SHOPIFY_CLIENT_SECRET,
+  },
+  google: {
+    authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    revokeUrl: 'https://oauth2.googleapis.com/revoke',
+    scopes: ['https://www.googleapis.com/auth/adwords'],
+    clientId: process.env.GOOGLE_ADS_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+  },
+  tiktok: {
+    authorizationUrl: 'https://business-api.tiktok.com/portal/auth',
+    tokenUrl: 'https://business-api.tiktok.com/open_api/v1.3/oauth2/access_token/',
+    revokeUrl: null,
+    scopes: [],
+    clientId: process.env.TIKTOK_APP_ID,
+    clientSecret: process.env.TIKTOK_APP_SECRET,
+  },
+  snapchat: {
+    authorizationUrl: 'https://accounts.snapchat.com/login/oauth2/authorize',
+    tokenUrl: 'https://accounts.snapchat.com/login/oauth2/access_token',
+    revokeUrl: null,
+    scopes: ['snapchat-marketing-api'],
+    clientId: process.env.SNAPCHAT_CLIENT_ID,
+    clientSecret: process.env.SNAPCHAT_CLIENT_SECRET,
   },
 };
 
@@ -63,6 +87,40 @@ export function getAuthUrl(provider, state, options = {}) {
       state,
     });
     return `${config.authorizationUrl(shop)}?${params.toString()}`;
+  }
+
+  if (provider === 'google') {
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: `${baseUrl}/api/auth/google/callback`,
+      scope: config.scopes.join(' '),
+      state,
+      response_type: 'code',
+      access_type: 'offline',
+      prompt: 'consent',
+    });
+    return `${config.authorizationUrl}?${params.toString()}`;
+  }
+
+  if (provider === 'tiktok') {
+    // TikTok uses app_id instead of client_id and has a unique URL format
+    const params = new URLSearchParams({
+      app_id: config.clientId,
+      state,
+      redirect_uri: `${baseUrl}/api/auth/tiktok/callback`,
+    });
+    return `${config.authorizationUrl}?${params.toString()}`;
+  }
+
+  if (provider === 'snapchat') {
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: `${baseUrl}/api/auth/snapchat/callback`,
+      scope: config.scopes.join(' '),
+      state,
+      response_type: 'code',
+    });
+    return `${config.authorizationUrl}?${params.toString()}`;
   }
 
   throw new Error(`Provider ${provider} not implemented`);
@@ -118,6 +176,65 @@ export async function exchangeCode(provider, code, options = {}) {
     return res.json();
   }
 
+  if (provider === 'google') {
+    const res = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        redirect_uri: `${baseUrl}/api/auth/google/callback`,
+        code,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Google token exchange failed: ${JSON.stringify(err)}`);
+    }
+    return res.json();
+  }
+
+  if (provider === 'tiktok') {
+    // TikTok uses JSON body and auth_code parameter
+    const res = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        app_id: config.clientId,
+        secret: config.clientSecret,
+        auth_code: code,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`TikTok token exchange failed: ${JSON.stringify(err)}`);
+    }
+    return res.json();
+  }
+
+  if (provider === 'snapchat') {
+    const res = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        redirect_uri: `${baseUrl}/api/auth/snapchat/callback`,
+        code,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Snapchat token exchange failed: ${JSON.stringify(err)}`);
+    }
+    return res.json();
+  }
+
   throw new Error(`Provider ${provider} not implemented`);
 }
 
@@ -141,6 +258,46 @@ export async function refreshToken(provider, currentToken) {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(`Meta token refresh failed: ${JSON.stringify(err)}`);
+    }
+    return res.json();
+  }
+
+  if (provider === 'google') {
+    const config = PROVIDERS.google;
+    const res = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        refresh_token: currentToken,
+        grant_type: 'refresh_token',
+      }).toString(),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Google token refresh failed: ${JSON.stringify(err)}`);
+    }
+    return res.json();
+  }
+
+  if (provider === 'snapchat') {
+    const config = PROVIDERS.snapchat;
+    const res = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        refresh_token: currentToken,
+        grant_type: 'refresh_token',
+      }).toString(),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Snapchat token refresh failed: ${JSON.stringify(err)}`);
     }
     return res.json();
   }
@@ -169,7 +326,6 @@ export async function revokeToken(provider, token, options = {}) {
     const shop = options.shop;
     if (!shop) throw new Error('Shopify requires a shop domain');
 
-    const config = PROVIDERS.shopify;
     const res = await fetch(`https://${shop}/admin/api_permissions/current.json`, {
       method: 'DELETE',
       headers: {
@@ -178,6 +334,21 @@ export async function revokeToken(provider, token, options = {}) {
       },
     });
     return res.ok;
+  }
+
+  if (provider === 'google') {
+    const config = PROVIDERS.google;
+    const res = await fetch(`${config.revokeUrl}?token=${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    return res.ok;
+  }
+
+  // TikTok and Snapchat don't have standard revoke endpoints
+  if (provider === 'tiktok' || provider === 'snapchat') {
+    // Gracefully skip -- just remove from DB
+    return true;
   }
 
   throw new Error(`Revoke not supported for provider: ${provider}`);

@@ -35,6 +35,9 @@ export async function GET(request) {
     const status = {
       meta: { connected: false },
       shopify: { connected: false },
+      google: { connected: false },
+      tiktok: { connected: false },
+      snapchat: { connected: false },
     };
 
     for (const row of data || []) {

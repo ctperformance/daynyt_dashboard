@@ -23,6 +23,27 @@ const INTEGRATIONS_CONFIG = [
     description: 'Meta Business Manager API',
   },
   {
+    key: 'google',
+    name: 'Google Ads',
+    icon: '\u25C9',
+    provider: 'google',
+    description: 'Google Ads API',
+  },
+  {
+    key: 'tiktok',
+    name: 'TikTok Ads',
+    icon: '\u266A',
+    provider: 'tiktok',
+    description: 'TikTok Business API',
+  },
+  {
+    key: 'snapchat',
+    name: 'Snapchat Ads',
+    icon: '\u25C7',
+    provider: 'snapchat',
+    description: 'Snapchat Marketing API',
+  },
+  {
     key: 'shopify',
     name: 'Shopify',
     icon: '\u2B21',
@@ -87,7 +108,8 @@ function SettingsContent({ projectSlug }) {
     const error = searchParams.get('error');
 
     if (connected) {
-      const providerName = connected === 'meta' ? 'Meta Ads' : connected === 'shopify' ? 'Shopify' : connected;
+      const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads' };
+      const providerName = nameMap[connected] || connected;
       setToast({ type: 'success', message: `${providerName} erfolgreich verbunden!` });
       window.history.replaceState({}, '', `/dashboard/${projectSlug}/settings`);
       fetchStatus();
@@ -129,7 +151,8 @@ function SettingsContent({ projectSlug }) {
   const handleOAuthPopup = (provider, url) => {
     openOAuthPopup(url || `/api/auth/${provider}`, {
       onSuccess: (connectedProvider) => {
-        const providerName = connectedProvider === 'meta' ? 'Meta Ads' : connectedProvider === 'shopify' ? 'Shopify' : connectedProvider;
+        const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads' };
+        const providerName = nameMap[connectedProvider] || connectedProvider;
         setToast({ type: 'success', message: `${providerName} erfolgreich verbunden!` });
         fetchStatus();
       },

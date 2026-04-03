@@ -44,6 +44,13 @@ const INTEGRATIONS_CONFIG = [
     description: 'Snapchat Marketing API',
   },
   {
+    key: 'bing',
+    name: 'Bing Ads',
+    icon: '\u25A3',
+    provider: 'bing',
+    description: 'Microsoft Advertising API',
+  },
+  {
     key: 'shopify',
     name: 'Shopify',
     icon: '\u2B21',
@@ -118,7 +125,7 @@ function SettingsContent({ projectSlug }) {
     const error = searchParams.get('error');
 
     if (connected) {
-      const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads', klaviyo: 'Klaviyo', clarity: 'Microsoft Clarity' };
+      const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads', bing: 'Bing Ads', klaviyo: 'Klaviyo', clarity: 'Microsoft Clarity' };
       const providerName = nameMap[connected] || connected;
       setToast({ type: 'success', message: `${providerName} erfolgreich verbunden!` });
       window.history.replaceState({}, '', `/dashboard/${projectSlug}/settings`);
@@ -161,7 +168,7 @@ function SettingsContent({ projectSlug }) {
   const handleOAuthPopup = (provider, url) => {
     openOAuthPopup(url || `/api/auth/${provider}`, {
       onSuccess: (connectedProvider) => {
-        const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads', klaviyo: 'Klaviyo', clarity: 'Microsoft Clarity' };
+        const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads', bing: 'Bing Ads', klaviyo: 'Klaviyo', clarity: 'Microsoft Clarity' };
         const providerName = nameMap[connectedProvider] || connectedProvider;
         setToast({ type: 'success', message: `${providerName} erfolgreich verbunden!` });
         fetchStatus();

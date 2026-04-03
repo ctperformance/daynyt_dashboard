@@ -127,6 +127,7 @@ const NAV_SECTIONS = [
       { segment: '/shopify', label: 'Shopify', icon: '\u2B21' },
       { segment: '/tiktok', label: 'TikTok Ads', icon: '\u266A' },
       { segment: '/snapchat', label: 'Snapchat Ads', icon: '\u25C7' },
+      { segment: '/bing', label: 'Bing Ads', icon: '\u25A3' },
       { segment: '/email', label: 'E-Mail', icon: '\u2709' },
       { segment: '/clarity', label: 'Website Analytics', icon: '\u25CE' },
     ],

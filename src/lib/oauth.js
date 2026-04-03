@@ -51,6 +51,14 @@ const PROVIDERS = {
     clientId: process.env.KLAVIYO_CLIENT_ID,
     clientSecret: process.env.KLAVIYO_CLIENT_SECRET,
   },
+  bing: {
+    authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    revokeUrl: null,
+    scopes: ['https://ads.microsoft.com/msads.manage', 'offline_access'],
+    clientId: process.env.BING_ADS_CLIENT_ID,
+    clientSecret: process.env.BING_ADS_CLIENT_SECRET,
+  },
 };
 
 /**
@@ -135,6 +143,17 @@ export function getAuthUrl(provider, state, options = {}) {
     const params = new URLSearchParams({
       client_id: config.clientId,
       redirect_uri: `${baseUrl}/api/auth/klaviyo/callback`,
+      scope: config.scopes.join(' '),
+      state,
+      response_type: 'code',
+    });
+    return `${config.authorizationUrl}?${params.toString()}`;
+  }
+
+  if (provider === 'bing') {
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: `${baseUrl}/api/auth/bing/callback`,
       scope: config.scopes.join(' '),
       state,
       response_type: 'code',
@@ -274,6 +293,26 @@ export async function exchangeCode(provider, code, options = {}) {
     return res.json();
   }
 
+  if (provider === 'bing') {
+    const res = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        redirect_uri: `${baseUrl}/api/auth/bing/callback`,
+        code,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Bing token exchange failed: ${JSON.stringify(err)}`);
+    }
+    return res.json();
+  }
+
   throw new Error(`Provider ${provider} not implemented`);
 }
 
@@ -361,6 +400,26 @@ export async function refreshToken(provider, currentToken) {
     return res.json();
   }
 
+  if (provider === 'bing') {
+    const config = PROVIDERS.bing;
+    const res = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        refresh_token: currentToken,
+        grant_type: 'refresh_token',
+      }).toString(),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Bing token refresh failed: ${JSON.stringify(err)}`);
+    }
+    return res.json();
+  }
+
   throw new Error(`Token refresh not supported for provider: ${provider}`);
 }
 
@@ -404,8 +463,8 @@ export async function revokeToken(provider, token, options = {}) {
     return res.ok;
   }
 
-  // TikTok, Snapchat, and Klaviyo don't have standard revoke endpoints
-  if (provider === 'tiktok' || provider === 'snapchat' || provider === 'klaviyo') {
+  // TikTok, Snapchat, Klaviyo, and Bing don't have standard revoke endpoints
+  if (provider === 'tiktok' || provider === 'snapchat' || provider === 'klaviyo' || provider === 'bing') {
     // Gracefully skip -- just remove from DB
     return true;
   }

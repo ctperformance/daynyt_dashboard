@@ -44,6 +44,13 @@ const CHANNEL_CONFIG = {
     kpis: ['Spend', 'Swipe-Ups', 'Conversions'],
     kpiKeys: ['spend', 'swipe_ups', 'conversions'],
   },
+  bing: {
+    title: 'Bing Ads',
+    icon: '\u25A3',
+    segment: '/bing',
+    kpis: ['Spend', 'ROAS', 'Conversions'],
+    kpiKeys: ['spend', 'roas', 'conversions'],
+  },
   klaviyo: {
     title: 'E-Mail (Klaviyo)',
     icon: '\u2709',
@@ -130,8 +137,8 @@ export default function ProjectOverview({ params }) {
             setQuizStats(result.value);
           } else {
             const val = result.value;
-            // Transform Klaviyo totals to flat values
-            if (key === 'klaviyo' && val.totals) {
+            // Extract totals from stats responses for all channels
+            if (val.totals) {
               newData[key] = val.totals;
             } else if (key === 'clarity') {
               // Add display-formatted values for the overview card
@@ -168,13 +175,15 @@ export default function ProjectOverview({ params }) {
     (channelData.meta?.spend || 0) +
     (channelData.google?.spend || 0) +
     (channelData.tiktok?.spend || 0) +
-    (channelData.snapchat?.spend || 0);
+    (channelData.snapchat?.spend || 0) +
+    (channelData.bing?.spend || 0);
 
   const totalConversions =
     (channelData.meta?.conversions || 0) +
     (channelData.google?.conversions || 0) +
     (channelData.tiktok?.conversions || 0) +
-    (channelData.snapchat?.conversions || 0);
+    (channelData.snapchat?.conversions || 0) +
+    (channelData.bing?.conversions || 0);
 
   const gesamtRoas = totalAdSpend > 0 ? (shopifyRevenue / totalAdSpend).toFixed(2) : '--';
   const blendedCpa = totalConversions > 0 ? (totalAdSpend / totalConversions).toFixed(2) : '--';

@@ -39,6 +39,7 @@ export async function GET(request) {
       tiktok: { connected: false },
       snapchat: { connected: false },
       klaviyo: { connected: false },
+      bing: { connected: false },
       clarity: { connected: false },
     };
 

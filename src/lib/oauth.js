@@ -1,5 +1,5 @@
 /**
- * OAuth configuration and helpers for Meta, Shopify, Google Ads, TikTok, and Snapchat integrations.
+ * OAuth configuration and helpers for Meta, Shopify, Google Ads, TikTok, Snapchat, and Klaviyo integrations.
  */
 
 const PROVIDERS = {
@@ -42,6 +42,14 @@ const PROVIDERS = {
     scopes: ['snapchat-marketing-api'],
     clientId: process.env.SNAPCHAT_CLIENT_ID,
     clientSecret: process.env.SNAPCHAT_CLIENT_SECRET,
+  },
+  klaviyo: {
+    authorizationUrl: 'https://www.klaviyo.com/oauth/authorize',
+    tokenUrl: 'https://a.klaviyo.com/oauth/token',
+    revokeUrl: null,
+    scopes: ['accounts:read', 'campaigns:read', 'flows:read', 'lists:read', 'metrics:read', 'profiles:read', 'segments:read'],
+    clientId: process.env.KLAVIYO_CLIENT_ID,
+    clientSecret: process.env.KLAVIYO_CLIENT_SECRET,
   },
 };
 
@@ -116,6 +124,17 @@ export function getAuthUrl(provider, state, options = {}) {
     const params = new URLSearchParams({
       client_id: config.clientId,
       redirect_uri: `${baseUrl}/api/auth/snapchat/callback`,
+      scope: config.scopes.join(' '),
+      state,
+      response_type: 'code',
+    });
+    return `${config.authorizationUrl}?${params.toString()}`;
+  }
+
+  if (provider === 'klaviyo') {
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: `${baseUrl}/api/auth/klaviyo/callback`,
       scope: config.scopes.join(' '),
       state,
       response_type: 'code',
@@ -235,6 +254,26 @@ export async function exchangeCode(provider, code, options = {}) {
     return res.json();
   }
 
+  if (provider === 'klaviyo') {
+    const res = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        redirect_uri: `${baseUrl}/api/auth/klaviyo/callback`,
+        code,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Klaviyo token exchange failed: ${JSON.stringify(err)}`);
+    }
+    return res.json();
+  }
+
   throw new Error(`Provider ${provider} not implemented`);
 }
 
@@ -302,6 +341,26 @@ export async function refreshToken(provider, currentToken) {
     return res.json();
   }
 
+  if (provider === 'klaviyo') {
+    const config = PROVIDERS.klaviyo;
+    const res = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        refresh_token: currentToken,
+        grant_type: 'refresh_token',
+      }).toString(),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Klaviyo token refresh failed: ${JSON.stringify(err)}`);
+    }
+    return res.json();
+  }
+
   throw new Error(`Token refresh not supported for provider: ${provider}`);
 }
 
@@ -345,8 +404,8 @@ export async function revokeToken(provider, token, options = {}) {
     return res.ok;
   }
 
-  // TikTok and Snapchat don't have standard revoke endpoints
-  if (provider === 'tiktok' || provider === 'snapchat') {
+  // TikTok, Snapchat, and Klaviyo don't have standard revoke endpoints
+  if (provider === 'tiktok' || provider === 'snapchat' || provider === 'klaviyo') {
     // Gracefully skip -- just remove from DB
     return true;
   }

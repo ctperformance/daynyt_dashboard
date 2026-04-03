@@ -128,6 +128,7 @@ const NAV_SECTIONS = [
       { segment: '/tiktok', label: 'TikTok Ads', icon: '\u266A' },
       { segment: '/snapchat', label: 'Snapchat Ads', icon: '\u25C7' },
       { segment: '/email', label: 'E-Mail', icon: '\u2709' },
+      { segment: '/clarity', label: 'Website Analytics', icon: '\u25CE' },
     ],
   },
   {

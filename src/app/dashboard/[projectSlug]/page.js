@@ -44,6 +44,20 @@ const CHANNEL_CONFIG = {
     kpis: ['Spend', 'Swipe-Ups', 'Conversions'],
     kpiKeys: ['spend', 'swipe_ups', 'conversions'],
   },
+  klaviyo: {
+    title: 'E-Mail (Klaviyo)',
+    icon: '\u2709',
+    segment: '/email',
+    kpis: ['Gesendet', 'Open Rate', 'Umsatz'],
+    kpiKeys: ['sends', 'open_rate', 'revenue'],
+  },
+  clarity: {
+    title: 'Website Analytics',
+    icon: '\u25CE',
+    segment: '/clarity',
+    kpis: ['Sessions', 'Engagement-Rate', '\u00D8 Session-Dauer'],
+    kpiKeys: ['sessions', 'engagement_rate_display', 'avg_session_duration_display'],
+  },
 };
 
 export default function ProjectOverview({ params }) {
@@ -115,7 +129,22 @@ export default function ProjectOverview({ params }) {
           if (key === 'quiz') {
             setQuizStats(result.value);
           } else {
-            newData[key] = result.value;
+            const val = result.value;
+            // Transform Klaviyo totals to flat values
+            if (key === 'klaviyo' && val.totals) {
+              newData[key] = val.totals;
+            } else if (key === 'clarity') {
+              // Add display-formatted values for the overview card
+              newData[key] = {
+                ...val,
+                engagement_rate_display: val.engagement_rate ? `${(val.engagement_rate * 100).toFixed(1)}%` : '--',
+                avg_session_duration_display: val.average_session_duration
+                  ? `${Math.floor(val.average_session_duration / 60)}:${Math.round(val.average_session_duration % 60).toString().padStart(2, '0')}`
+                  : '--',
+              };
+            } else {
+              newData[key] = val;
+            }
           }
         }
       });
@@ -230,8 +259,12 @@ export default function ProjectOverview({ params }) {
         </div>
         <div className="bg-ease-card border border-ease-border rounded-xl px-5 py-4">
           <p className="text-xs text-gray-500 mb-1">E-Mail Subscribers</p>
-          <p className="text-2xl font-bold text-gray-600">--</p>
-          <p className="text-[11px] text-gray-600 mt-0.5">Bald verfuegbar</p>
+          <p className="text-2xl font-bold text-ease-cream">
+            {channelData.klaviyo?.subscribers ? fmt(channelData.klaviyo.subscribers) : '--'}
+          </p>
+          {!integrationStatus.klaviyo?.connected && (
+            <p className="text-[11px] text-gray-600 mt-0.5">Klaviyo verbinden</p>
+          )}
         </div>
         <div className="bg-ease-card border border-ease-border rounded-xl px-5 py-4">
           <p className="text-xs text-gray-500 mb-1">Conversion Rate</p>

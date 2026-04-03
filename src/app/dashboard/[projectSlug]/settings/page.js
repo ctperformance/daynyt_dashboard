@@ -52,12 +52,19 @@ const INTEGRATIONS_CONFIG = [
     needsShopInput: !process.env.NEXT_PUBLIC_SHOPIFY_CUSTOM_DIST,
   },
   {
-    key: 'email',
-    name: 'E-Mail Marketing',
+    key: 'klaviyo',
+    name: 'Klaviyo',
     icon: '\u2709',
-    provider: null,
-    description: 'Klaviyo / Mailchimp API',
-    comingSoon: true,
+    provider: 'klaviyo',
+    description: 'E-Mail Marketing API',
+  },
+  {
+    key: 'clarity',
+    name: 'Microsoft Clarity',
+    icon: '\u25CE',
+    provider: 'clarity',
+    description: 'Website Analytics & Heatmaps',
+    needsApiKey: true,
   },
 ];
 
@@ -79,6 +86,9 @@ function SettingsContent({ projectSlug }) {
   const [toast, setToast] = useState(null);
   const [shopDomain, setShopDomain] = useState('');
   const [disconnecting, setDisconnecting] = useState(null);
+  const [clarityProjectId, setClarityProjectId] = useState('');
+  const [clarityApiToken, setClarityApiToken] = useState('');
+  const [savingApiKey, setSavingApiKey] = useState(false);
 
   const project = userProjects.find((p) => p.slug === projectSlug);
   const projectName = project?.name || projectSlug.toUpperCase();
@@ -108,7 +118,7 @@ function SettingsContent({ projectSlug }) {
     const error = searchParams.get('error');
 
     if (connected) {
-      const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads' };
+      const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads', klaviyo: 'Klaviyo', clarity: 'Microsoft Clarity' };
       const providerName = nameMap[connected] || connected;
       setToast({ type: 'success', message: `${providerName} erfolgreich verbunden!` });
       window.history.replaceState({}, '', `/dashboard/${projectSlug}/settings`);
@@ -151,7 +161,7 @@ function SettingsContent({ projectSlug }) {
   const handleOAuthPopup = (provider, url) => {
     openOAuthPopup(url || `/api/auth/${provider}`, {
       onSuccess: (connectedProvider) => {
-        const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads' };
+        const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads', klaviyo: 'Klaviyo', clarity: 'Microsoft Clarity' };
         const providerName = nameMap[connectedProvider] || connectedProvider;
         setToast({ type: 'success', message: `${providerName} erfolgreich verbunden!` });
         fetchStatus();
@@ -160,6 +170,38 @@ function SettingsContent({ projectSlug }) {
         setToast({ type: 'error', message: `Verbindungsfehler: ${error}` });
       },
     });
+  };
+
+  const handleApiKeySave = async (provider, token, accountId) => {
+    setSavingApiKey(true);
+    try {
+      const res = await fetch('/api/integrations/save-apikey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          provider,
+          api_token: token,
+          provider_account_id: accountId,
+        }),
+      });
+      if (res.ok) {
+        setToast({ type: 'success', message: `${provider === 'clarity' ? 'Microsoft Clarity' : provider} erfolgreich verbunden!` });
+        fetchStatus();
+      } else {
+        setToast({ type: 'error', message: 'Fehler beim Speichern der Verbindung.' });
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Netzwerkfehler.' });
+    }
+    setSavingApiKey(false);
+  };
+
+  const handleClarityConnect = (e) => {
+    e.preventDefault();
+    if (clarityProjectId && clarityApiToken) {
+      handleApiKeySave('clarity', clarityApiToken, clarityProjectId);
+    }
   };
 
   const handleShopifyConnect = (e) => {
@@ -255,6 +297,10 @@ function SettingsContent({ projectSlug }) {
                       </div>
                     ) : integrationStatus === 'coming_soon' ? (
                       <span className="text-[11px] text-gray-600 bg-white/5 px-3 py-1 rounded-full">Bald verfuegbar</span>
+                    ) : integration.needsApiKey ? (
+                      <span className="text-[11px] text-ease-accent bg-ease-accent/10 px-3 py-1 rounded-full">
+                        API-Key eingeben
+                      </span>
                     ) : integration.needsShopInput ? (
                       <button
                         onClick={() => document.getElementById('shopify-input')?.focus()}
@@ -294,6 +340,36 @@ function SettingsContent({ projectSlug }) {
                     <button type="submit" className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1.5 rounded-lg transition-colors">
                       Store verbinden
                     </button>
+                  </form>
+                )}
+
+                {integration.needsApiKey && integrationStatus === 'disconnected' && !loading && (
+                  <form onSubmit={handleClarityConnect} className="mt-3 pl-[52px] space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={clarityProjectId}
+                        onChange={(e) => setClarityProjectId(e.target.value)}
+                        placeholder="Clarity Project ID"
+                        className="flex-1 max-w-[200px] bg-ease-bg border border-ease-border rounded-lg px-3 py-1.5 text-xs text-ease-cream placeholder-gray-600 focus:outline-none focus:border-ease-accent transition-colors"
+                        required
+                      />
+                      <input
+                        type="password"
+                        value={clarityApiToken}
+                        onChange={(e) => setClarityApiToken(e.target.value)}
+                        placeholder="API Token"
+                        className="flex-1 max-w-[200px] bg-ease-bg border border-ease-border rounded-lg px-3 py-1.5 text-xs text-ease-cream placeholder-gray-600 focus:outline-none focus:border-ease-accent transition-colors"
+                        required
+                      />
+                      <button
+                        type="submit"
+                        disabled={savingApiKey}
+                        className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {savingApiKey ? '...' : 'Verbinden'}
+                      </button>
+                    </div>
                   </form>
                 )}
               </div>

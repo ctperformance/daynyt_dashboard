@@ -38,6 +38,8 @@ export async function GET(request) {
       google: { connected: false },
       tiktok: { connected: false },
       snapchat: { connected: false },
+      klaviyo: { connected: false },
+      clarity: { connected: false },
     };
 
     for (const row of data || []) {

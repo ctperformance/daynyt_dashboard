@@ -216,6 +216,8 @@ export default function AdsPage({ params }) {
   const [dateRange, setDateRange] = useState('30d');
   const [campaigns, setCampaigns] = useState(null);
   const [connectedPlatforms, setConnectedPlatforms] = useState({});
+  const [clarityConnected, setClarityConnected] = useState(false);
+  const [clarityQuality, setClarityQuality] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -243,6 +245,7 @@ export default function AdsPage({ params }) {
             tiktok: data.tiktok?.connected || false,
             snapchat: data.snapchat?.connected || false,
           });
+          setClarityConnected(data.clarity?.connected || false);
         }
       } catch {
         // silent
@@ -289,6 +292,27 @@ export default function AdsPage({ params }) {
       fetchCampaigns();
     }
   }, [connectedPlatforms, fetchCampaigns]);
+
+  // Fetch Clarity quality data for campaigns
+  useEffect(() => {
+    if (!clarityConnected || !projectId) return;
+    async function fetchClarityQuality() {
+      try {
+        const res = await fetch(`/api/clarity/campaigns?project_id=${projectId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const qualityMap = {};
+          for (const c of (data.campaigns || [])) {
+            qualityMap[c.campaign] = c;
+          }
+          setClarityQuality(qualityMap);
+        }
+      } catch {
+        // silent
+      }
+    }
+    fetchClarityQuality();
+  }, [clarityConnected, projectId]);
 
   // Aggregate KPIs
   const totals = campaigns
@@ -544,6 +568,7 @@ export default function AdsPage({ params }) {
                       <th className="text-right px-4 py-3 font-medium">CPA</th>
                       <th className="text-right px-4 py-3 font-medium">Conversions</th>
                       <th className="text-right px-4 py-3 font-medium">Impressionen</th>
+                      <th className="text-right px-4 py-3 font-medium">Qualitaet</th>
                       <th className="text-right px-5 py-3 font-medium">Aktionen</th>
                     </tr>
                   </thead>
@@ -598,6 +623,27 @@ export default function AdsPage({ params }) {
                           </td>
                           <td className="text-right px-4 py-3 text-gray-400">
                             {fmtInt(campaign.impressions)}
+                          </td>
+                          <td className="text-right px-4 py-3">
+                            {(() => {
+                              const cq = clarityQuality[campaign.name];
+                              if (!clarityConnected) return <span className="text-gray-600">&mdash;</span>;
+                              if (!cq) return <span className="text-gray-600">&mdash;</span>;
+                              const score = cq.quality_score;
+                              const colorClass = score > 70 ? 'text-green-500 bg-green-500/10' : score >= 40 ? 'text-yellow-500 bg-yellow-500/10' : 'text-red-500 bg-red-500/10';
+                              return (
+                                <span className="relative group">
+                                  <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${colorClass}`}>
+                                    {score}
+                                  </span>
+                                  <span className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10 bg-ease-bg border border-ease-border rounded-lg px-3 py-2 text-xs text-gray-400 whitespace-nowrap shadow-lg">
+                                    Sessions: {cq.sessions}<br />
+                                    Scroll-Tiefe: {Math.round(cq.avg_scroll_depth)}%<br />
+                                    Session-Dauer: {Math.floor(cq.avg_session_duration / 60)}:{Math.round(cq.avg_session_duration % 60).toString().padStart(2, '0')}
+                                  </span>
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="text-right px-5 py-3">
                             <div className="flex items-center justify-end gap-2">

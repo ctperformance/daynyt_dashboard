@@ -9,40 +9,11 @@ export async function GET(request) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const { searchParams } = new URL(request.url);
   const projectSlug = searchParams.get('project_slug') || 'ease';
+  const projectId = searchParams.get('project_id') || null;
   const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/settings`;
 
   try {
-    const customInstallUrl = process.env.SHOPIFY_INSTALL_URL
-      || (process.env.SHOPIFY_CLIENT_ID ? `https://admin.shopify.com/oauth/install?client_id=${process.env.SHOPIFY_CLIENT_ID}` : null);
-
-    // Custom Distribution: redirect directly to the install link
-    if (customInstallUrl) {
-      // Set cookies so we know this is a Custom Distribution flow
-      const cookieStore = await cookies();
-      cookieStore.set('oauth_flow_shopify', 'custom_distribution', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 600,
-        path: '/',
-      });
-      if (searchParams.get('project_id')) {
-        cookieStore.set('oauth_project_shopify', JSON.stringify({
-          project_id: searchParams.get('project_id'),
-          project_slug: projectSlug,
-        }), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 600,
-          path: '/',
-        });
-      }
-
-      return NextResponse.redirect(customInstallUrl);
-    }
-
-    // Standard OAuth flow (for public/unlisted apps)
+    // Standard OAuth flow — requires shop domain
     const shop = searchParams.get('shop');
 
     if (!shop) {
@@ -50,34 +21,30 @@ export async function GET(request) {
     }
 
     // Normalize shop domain
-    const shopDomain = shop.includes('.myshopify.com') ? shop : `${shop}.myshopify.com`;
+    let shopDomain = shop.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    if (!shopDomain.includes('.')) shopDomain = `${shopDomain}.myshopify.com`;
+    if (!shopDomain.includes('.myshopify.com')) shopDomain = `${shopDomain.split('.')[0]}.myshopify.com`;
 
     const state = crypto.randomUUID();
     const nonce = crypto.randomUUID();
 
-    // Store state and nonce in cookies for validation
+    // Store state, nonce, shop, and project info in cookies
     const cookieStore = await cookies();
-    cookieStore.set('oauth_state_shopify', state, {
+    const cookieOpts = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 600,
       path: '/',
-    });
-    cookieStore.set('oauth_nonce_shopify', nonce, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 600,
-      path: '/',
-    });
-    cookieStore.set('oauth_shop_shopify', shopDomain, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 600,
-      path: '/',
-    });
+    };
+
+    cookieStore.set('oauth_state_shopify', state, cookieOpts);
+    cookieStore.set('oauth_nonce_shopify', nonce, cookieOpts);
+    cookieStore.set('oauth_shop_shopify', shopDomain, cookieOpts);
+    cookieStore.set('oauth_project_shopify', JSON.stringify({
+      project_id: projectId,
+      project_slug: projectSlug,
+    }), cookieOpts);
 
     const authUrl = getAuthUrl('shopify', state, { shop: shopDomain });
     return NextResponse.redirect(authUrl);

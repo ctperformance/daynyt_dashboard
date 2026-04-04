@@ -55,7 +55,7 @@ const INTEGRATIONS_CONFIG = [
     icon: '\u2B21',
     provider: 'shopify',
     description: 'Shopify Admin API',
-    needsShopifyToken: true,
+    needsShopOAuth: true,
   },
   {
     key: 'klaviyo',
@@ -91,7 +91,6 @@ function SettingsContent({ projectSlug }) {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [shopifyDomain, setShopifyDomain] = useState('');
-  const [shopifyToken, setShopifyToken] = useState('');
   const [disconnecting, setDisconnecting] = useState(null);
   const [clarityProjectId, setClarityProjectId] = useState('');
   const [clarityApiToken, setClarityApiToken] = useState('');
@@ -231,37 +230,11 @@ function SettingsContent({ projectSlug }) {
     }
   };
 
-  const handleShopifyConnect = async (e) => {
+  const handleShopifyConnect = (e) => {
     e.preventDefault();
-    if (!shopifyDomain || !shopifyToken) return;
-    // Normalize domain
-    let domain = shopifyDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-    if (!domain.includes('.')) domain = `${domain}.myshopify.com`;
-
-    setSavingApiKey(true);
-    try {
-      const res = await fetch('/api/integrations/save-apikey', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_id: projectId,
-          provider: 'shopify',
-          api_token: shopifyToken,
-          provider_account_id: domain,
-        }),
-      });
-      if (res.ok) {
-        setToast({ type: 'success', message: 'Shopify erfolgreich verbunden!' });
-        setShopifyDomain('');
-        setShopifyToken('');
-        fetchStatus();
-      } else {
-        setToast({ type: 'error', message: 'Fehler beim Speichern.' });
-      }
-    } catch {
-      setToast({ type: 'error', message: 'Netzwerkfehler.' });
-    }
-    setSavingApiKey(false);
+    if (!shopifyDomain) return;
+    const domain = shopifyDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    window.location.href = `/api/auth/shopify?shop=${encodeURIComponent(domain)}&project_id=${projectId}&project_slug=${projectSlug}`;
   };
 
   const getIntegrationStatus = (integration) => {
@@ -354,12 +327,12 @@ function SettingsContent({ projectSlug }) {
                       <span className="text-[11px] text-ease-accent bg-ease-accent/10 px-3 py-1 rounded-full">
                         API-Key eingeben
                       </span>
-                    ) : integration.needsShopifyToken ? (
+                    ) : integration.needsShopOAuth ? (
                       <button
                         onClick={() => document.getElementById('shopify-domain')?.focus()}
                         className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1 rounded-full transition-colors"
                       >
-                        Token eingeben
+                        Verbinden
                       </button>
                     ) : (
                       <button
@@ -418,35 +391,23 @@ function SettingsContent({ projectSlug }) {
                   </div>
                 )}
 
-                {integration.needsShopifyToken && integrationStatus === 'disconnected' && !loading && (
-                  <form onSubmit={handleShopifyConnect} className="mt-3 pl-[52px] space-y-2">
-                    <p className="text-[11px] text-gray-500">Erstelle eine Custom App in Shopify Admin &rarr; Einstellungen &rarr; Apps entwickeln, und kopiere den Admin API Access Token.</p>
-                    <div className="flex items-center gap-2">
-                      <input
-                        id="shopify-domain"
-                        type="text"
-                        value={shopifyDomain}
-                        onChange={(e) => setShopifyDomain(e.target.value)}
-                        placeholder="dein-store.myshopify.com"
-                        className="flex-1 max-w-[200px] bg-ease-bg border border-ease-border rounded-lg px-3 py-1.5 text-xs text-ease-cream placeholder-gray-600 focus:outline-none focus:border-ease-accent transition-colors"
-                        required
-                      />
-                      <input
-                        type="password"
-                        value={shopifyToken}
-                        onChange={(e) => setShopifyToken(e.target.value)}
-                        placeholder="Admin API Access Token"
-                        className="flex-1 max-w-[240px] bg-ease-bg border border-ease-border rounded-lg px-3 py-1.5 text-xs text-ease-cream placeholder-gray-600 focus:outline-none focus:border-ease-accent transition-colors"
-                        required
-                      />
-                      <button
-                        type="submit"
-                        disabled={savingApiKey}
-                        className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {savingApiKey ? '...' : 'Verbinden'}
-                      </button>
-                    </div>
+                {integration.needsShopOAuth && integrationStatus === 'disconnected' && !loading && (
+                  <form onSubmit={handleShopifyConnect} className="mt-3 flex items-center gap-2 pl-[52px]">
+                    <input
+                      id="shopify-domain"
+                      type="text"
+                      value={shopifyDomain}
+                      onChange={(e) => setShopifyDomain(e.target.value)}
+                      placeholder="dein-store.myshopify.com"
+                      className="flex-1 max-w-[240px] bg-ease-bg border border-ease-border rounded-lg px-3 py-1.5 text-xs text-ease-cream placeholder-gray-600 focus:outline-none focus:border-ease-accent transition-colors"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Mit Shopify verbinden
+                    </button>
                   </form>
                 )}
 

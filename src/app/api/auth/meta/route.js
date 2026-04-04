@@ -5,9 +5,19 @@ import { getAuthUrl } from '@/lib/oauth';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const state = crypto.randomUUID();
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get('project_id');
+    const projectSlug = searchParams.get('project_slug') || 'ease';
+
+    // Encode project info into state so callback knows which project to update
+    const statePayload = JSON.stringify({
+      csrf: crypto.randomUUID(),
+      project_id: projectId,
+      project_slug: projectSlug,
+    });
+    const state = Buffer.from(statePayload).toString('base64url');
 
     // Store state in cookie for CSRF validation on callback
     const cookieStore = await cookies();

@@ -8,13 +8,26 @@ export const fetchCache = 'force-no-store';
 
 export async function GET(request) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const settingsUrl = `${baseUrl}/dashboard/ease/settings`;
 
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
+
+    // Parse state to get project info
+    let stateData = {};
+    let projectSlug = 'ease';
+    let projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
+    try {
+      stateData = JSON.parse(Buffer.from(state || '', 'base64url').toString());
+      projectSlug = stateData.project_slug || projectSlug;
+      projectId = stateData.project_id || projectId;
+    } catch {
+      // Fallback to defaults if state parsing fails
+    }
+
+    const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/settings`;
 
     // User denied access
     if (error) {
@@ -69,11 +82,25 @@ export async function GET(request) {
       console.warn('Could not exchange for long-lived token, using short-lived:', llError.message);
     }
 
-    // Store in Supabase
+    // Store in Supabase — do NOT auto-select an ad account.
+    // If user had a previously selected account, keep it; otherwise leave null
+    // so they can pick from the account selector in settings.
     const supabase = createServiceClient();
-    const projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
+    const adAccounts = adAccountsData.data || [];
 
-    const primaryAdAccount = adAccountsData.data?.[0];
+    // Check if there's an existing selection
+    const { data: existing } = await supabase
+      .from('integrations_oauth')
+      .select('provider_account_id')
+      .eq('project_id', projectId)
+      .eq('provider', 'meta')
+      .single();
+
+    // Keep existing selection if it's still in the account list, otherwise null
+    const previousAccountId = existing?.provider_account_id;
+    const stillValid = adAccounts.some(a => a.account_id === previousAccountId);
+    const selectedAccountId = stillValid ? previousAccountId : null;
+    const selectedAccount = selectedAccountId ? adAccounts.find(a => a.account_id === selectedAccountId) : null;
 
     const { error: dbError } = await supabase
       .from('integrations_oauth')
@@ -84,12 +111,13 @@ export async function GET(request) {
         refresh_token: null,
         token_expires_at: tokenExpiresAt,
         scope: 'ads_read,read_insights,business_management',
-        provider_account_id: primaryAdAccount?.account_id || null,
+        provider_account_id: selectedAccountId,
         provider_metadata: {
-          ad_accounts: adAccountsData.data || [],
-          primary_account_name: primaryAdAccount?.name || null,
-          currency: primaryAdAccount?.currency || null,
-          timezone: primaryAdAccount?.timezone_name || null,
+          ad_accounts: adAccounts,
+          primary_account_name: selectedAccount?.name || null,
+          currency: selectedAccount?.currency || null,
+          timezone: selectedAccount?.timezone_name || null,
+          needs_account_selection: !selectedAccountId && adAccounts.length > 1,
         },
         connected_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -102,9 +130,14 @@ export async function GET(request) {
       return NextResponse.redirect(`${settingsUrl}?error=meta_db_error`);
     }
 
+    // If multiple accounts and none selected, redirect with select prompt
+    if (!selectedAccountId && adAccounts.length > 1) {
+      return NextResponse.redirect(`${settingsUrl}?connected=meta&select_account=meta`);
+    }
+
     return NextResponse.redirect(`${settingsUrl}?connected=meta`);
   } catch (error) {
     console.error('Meta OAuth callback error:', error);
-    return NextResponse.redirect(`${settingsUrl}?error=meta_callback_failed`);
+    return NextResponse.redirect(`${baseUrl}/dashboard/ease/settings?error=meta_callback_failed`);
   }
 }

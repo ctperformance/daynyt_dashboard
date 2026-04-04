@@ -96,6 +96,8 @@ function SettingsContent({ projectSlug }) {
   const [clarityProjectId, setClarityProjectId] = useState('');
   const [clarityApiToken, setClarityApiToken] = useState('');
   const [savingApiKey, setSavingApiKey] = useState(false);
+  const [selectingAccount, setSelectingAccount] = useState(null);
+  const [showAccountSelector, setShowAccountSelector] = useState(null);
 
   const project = userProjects.find((p) => p.slug === projectSlug);
   const projectName = project?.name || projectSlug.toUpperCase();
@@ -124,10 +126,15 @@ function SettingsContent({ projectSlug }) {
     const connected = searchParams.get('connected');
     const error = searchParams.get('error');
 
+    const selectAccount = searchParams.get('select_account');
+    if (selectAccount) {
+      setShowAccountSelector(selectAccount);
+    }
+
     if (connected) {
       const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads', bing: 'Bing Ads', klaviyo: 'Klaviyo', clarity: 'Microsoft Clarity' };
       const providerName = nameMap[connected] || connected;
-      setToast({ type: 'success', message: `${providerName} erfolgreich verbunden!` });
+      setToast({ type: 'success', message: selectAccount ? `${providerName} verbunden — bitte Werbekonto auswaehlen.` : `${providerName} erfolgreich verbunden!` });
       window.history.replaceState({}, '', `/dashboard/${projectSlug}/settings`);
       fetchStatus();
     } else if (error) {
@@ -202,6 +209,29 @@ function SettingsContent({ projectSlug }) {
       setToast({ type: 'error', message: 'Netzwerkfehler.' });
     }
     setSavingApiKey(false);
+  };
+
+  const handleSelectAdAccount = async (provider, accountId) => {
+    setSelectingAccount(provider);
+    try {
+      const res = await fetch('/api/integrations/select-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId, provider, account_id: accountId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setToast({ type: 'success', message: `Werbekonto "${data.account.name}" ausgewaehlt.` });
+        setShowAccountSelector(null);
+        fetchStatus();
+      } else {
+        setToast({ type: 'error', message: 'Fehler beim Auswaehlen des Kontos.' });
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Netzwerkfehler.' });
+    } finally {
+      setSelectingAccount(null);
+    }
   };
 
   const handleClarityConnect = (e) => {
@@ -324,7 +354,7 @@ function SettingsContent({ projectSlug }) {
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleOAuthPopup(integration.provider)}
+                        onClick={() => handleOAuthPopup(integration.provider, `/api/auth/${integration.provider}?project_id=${projectId}&project_slug=${projectSlug}`)}
                         className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1 rounded-full transition-colors"
                       >
                         Verbinden
@@ -332,6 +362,52 @@ function SettingsContent({ projectSlug }) {
                     )}
                   </div>
                 </div>
+
+                {/* Ad Account Selector for providers with multiple accounts */}
+                {integrationStatus === 'connected' && !loading && status[integration.provider]?.metadata?.ad_accounts?.length > 1 && (
+                  <div className="mt-3 pl-[52px]">
+                    {showAccountSelector === integration.provider ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-400">Werbekonto auswaehlen:</p>
+                        <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                          {status[integration.provider].metadata.ad_accounts.map((acc) => (
+                            <button
+                              key={acc.account_id}
+                              onClick={() => handleSelectAdAccount(integration.provider, acc.account_id)}
+                              disabled={selectingAccount === integration.provider}
+                              className={`text-left text-xs px-3 py-2 rounded-lg border transition-colors disabled:opacity-50 ${
+                                acc.account_id === status[integration.provider]?.account_id
+                                  ? 'border-ease-accent bg-ease-accent/10 text-ease-accent'
+                                  : 'border-ease-border bg-ease-bg text-gray-400 hover:border-ease-accent/50 hover:text-ease-cream'
+                              }`}
+                            >
+                              <span className="font-medium">{acc.name}</span>
+                              <span className="text-gray-600 ml-2">({acc.account_id})</span>
+                              {acc.account_id === status[integration.provider]?.account_id && (
+                                <span className="ml-2 text-ease-green">&#10003;</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => setShowAccountSelector(null)}
+                          className="text-[11px] text-gray-500 hover:text-gray-400 transition-colors"
+                        >
+                          Abbrechen
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowAccountSelector(integration.provider)}
+                        className="text-[11px] text-gray-500 hover:text-ease-accent transition-colors"
+                      >
+                        {status[integration.provider]?.metadata?.needs_account_selection
+                          ? '⚠ Werbekonto auswaehlen'
+                          : 'Werbekonto wechseln'}
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {integration.needsShopInput && integrationStatus === 'disconnected' && !loading && (
                   <form onSubmit={handleShopifyConnect} className="mt-3 flex items-center gap-2 pl-[52px]">

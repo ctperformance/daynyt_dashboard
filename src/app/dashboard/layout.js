@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }) {
         )}
 
         {/* Channel Nav — only shown when a project is active */}
-        {activeProject && <ClientNav projectSlug={activeProject.slug} pathname={pathname} />}
+        {activeProject && <ClientNav projectSlug={activeProject.slug} pathname={pathname} addons={activeProject.addons} />}
 
         {/* Spacer */}
         <div className="flex-1" />
@@ -116,12 +116,13 @@ export default function DashboardLayout({ children }) {
   );
 }
 
-const NAV_SECTIONS = [
+// Base nav items — always visible
+const BASE_NAV_SECTIONS = [
   {
     label: 'Kanäle',
     items: [
       { segment: '', label: 'Übersicht', icon: '\u229E' },
-      { segment: '/quiz', label: 'Quiz', icon: '\u2726' },
+      // Quiz is inserted here dynamically if addon is enabled
       { segment: '/meta', label: 'Meta Ads', icon: '\u25CE' },
       { segment: '/google', label: 'Google Ads', icon: '\u25C9' },
       { segment: '/shopify', label: 'Shopify', icon: '\u2B21' },
@@ -148,8 +149,28 @@ const NAV_SECTIONS = [
   },
 ];
 
-function ClientNav({ projectSlug, pathname }) {
+// Build nav sections with active add-ons injected
+function buildNavSections(addons) {
+  const sections = JSON.parse(JSON.stringify(BASE_NAV_SECTIONS));
+  const channelSection = sections.find(s => s.label === 'Kanäle');
+
+  // Quiz add-on — insert after Übersicht if enabled
+  if (addons?.quiz?.enabled) {
+    const quizName = addons.quiz.name || 'Quiz';
+    channelSection.items.splice(1, 0, {
+      segment: '/quiz',
+      label: quizName,
+      icon: '\u2726',
+      addon: true,
+    });
+  }
+
+  return sections;
+}
+
+function ClientNav({ projectSlug, pathname, addons }) {
   const base = `/dashboard/${projectSlug}`;
+  const navSections = buildNavSections(addons);
 
   function isActive(segment) {
     const full = base + segment;
@@ -159,7 +180,7 @@ function ClientNav({ projectSlug, pathname }) {
 
   return (
     <nav className="px-3 py-3 flex flex-col gap-0.5">
-      {NAV_SECTIONS.map((section) => (
+      {navSections.map((section) => (
         <div key={section.label} className="mb-2">
           <p className="text-[10px] uppercase tracking-wider text-ease-muted px-3 mb-2">
             {section.label}
@@ -176,6 +197,11 @@ function ClientNav({ projectSlug, pathname }) {
             >
               <span className="text-base w-5 text-center">{item.icon}</span>
               {item.label}
+              {item.addon && (
+                <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-white/[0.06] text-white/30 font-medium">
+                  Add-on
+                </span>
+              )}
             </Link>
           ))}
         </div>

@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
       if (orgIds.length > 0) {
         const { data: projects, error: projError } = await supabase
           .from('projects')
-          .select('id, name, slug, organization_id, created_at')
+          .select('id, name, slug, organization_id, created_at, addons')
           .in('organization_id', orgIds)
           .order('name');
 

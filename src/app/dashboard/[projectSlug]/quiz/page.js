@@ -28,6 +28,35 @@ export default function QuizPage({ params }) {
   const projectName = project?.name || projectSlug.toUpperCase();
   const projectId = project?.id;
 
+  // Dynamic quiz name from project add-on config
+  const quizAddon = project?.addons?.quiz;
+  const quizName = quizAddon?.name || 'Quiz';
+  const quizEnabled = quizAddon?.enabled;
+
+  // If quiz add-on is not enabled for this project
+  if (project && !quizEnabled) {
+    return (
+      <div className="px-8 py-8 max-w-7xl">
+        <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
+          <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
+          <span className="text-white/20">/</span>
+          <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
+          <span className="text-white/20">/</span>
+          <span className="text-white font-medium">Quiz</span>
+        </div>
+        <div className="glass rounded-2xl p-16 text-center max-w-lg mx-auto mt-8 animate-fade-in">
+          <div className="w-14 h-14 rounded-xl bg-white/[0.04] flex items-center justify-center text-2xl mx-auto mb-4">
+            {'\u2726'}
+          </div>
+          <h2 className="text-base font-semibold mb-2">Quiz-Add-on nicht aktiviert</h2>
+          <p className="text-sm text-ease-muted">
+            Dieses Projekt hat kein Quiz-Add-on konfiguriert. Kontaktiere deinen Account-Manager, um ein Quiz-Funnel für dieses Projekt einzurichten.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // SWR cached fetch — data persists across navigations
   const { data: liveData, error, isLoading } = useSWR(
     projectId ? `/api/dashboard-stats?project_id=${projectId}&days=${days}` : null,
@@ -44,7 +73,7 @@ export default function QuizPage({ params }) {
       <span className="text-white/20">/</span>
       <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
       <span className="text-white/20">/</span>
-      <span className="text-white font-medium">Quiz</span>
+      <span className="text-white font-medium">{quizName}</span>
     </div>
   );
 
@@ -53,7 +82,7 @@ export default function QuizPage({ params }) {
     return (
       <div className="px-8 py-8 max-w-7xl">
         {breadcrumb}
-        <h1 className="text-2xl font-bold tracking-tight mb-8 animate-fade-in">Nervensystem-Quiz</h1>
+        <h1 className="text-2xl font-bold tracking-tight mb-8 animate-fade-in">{quizName}</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="glass rounded-2xl p-5 space-y-3">
@@ -75,7 +104,7 @@ export default function QuizPage({ params }) {
     return (
       <div className="px-8 py-8 max-w-7xl">
         {breadcrumb}
-        <h1 className="text-2xl font-bold tracking-tight mb-8 animate-fade-in">Nervensystem-Quiz</h1>
+        <h1 className="text-2xl font-bold tracking-tight mb-8 animate-fade-in">{quizName}</h1>
 
         <div className="glass rounded-2xl p-16 text-center max-w-lg mx-auto animate-fade-in">
           <div className="w-14 h-14 rounded-xl bg-white/[0.04] flex items-center justify-center text-2xl mx-auto mb-4">
@@ -134,7 +163,7 @@ export default function QuizPage({ params }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-8 animate-fade-in">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Nervensystem-Quiz</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{quizName}</h1>
           <p className="text-xs text-ease-muted mt-1">Quiz Analytics & Funnel-Daten</p>
         </div>
         <div className="flex items-center gap-1">

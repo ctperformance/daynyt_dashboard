@@ -8,11 +8,11 @@ import { useAuth } from '@/components/AuthProvider';
 const INTEGRATIONS_CONFIG = [
   {
     key: 'quiz',
-    name: 'Nervensystem-Quiz',
+    name: 'Quiz-Funnel',
     icon: '\u2726',
     provider: null,
-    description: 'Shopify Quiz Webhook',
-    alwaysConnected: true,
+    description: 'Quiz Webhook (Add-on)',
+    addonKey: 'quiz',
   },
   {
     key: 'meta',
@@ -237,15 +237,32 @@ function SettingsContent({ projectSlug }) {
     window.location.href = `/api/auth/shopify?shop=${encodeURIComponent(domain)}&project_id=${projectId}&project_slug=${projectSlug}`;
   };
 
+  // Check if addon is enabled for this project
+  const project = userProjects.find((p) => p.slug === projectSlug);
+  const projectAddons = project?.addons || {};
+
+  const isAddonEnabled = (integration) => {
+    if (!integration.addonKey) return true; // Not an add-on, always show
+    return projectAddons[integration.addonKey]?.enabled === true;
+  };
+
+  const getAddonName = (integration) => {
+    if (!integration.addonKey) return integration.name;
+    return projectAddons[integration.addonKey]?.name || integration.name;
+  };
+
+  // Filter integrations — hide add-ons that aren't enabled
+  const visibleIntegrations = INTEGRATIONS_CONFIG.filter(i => isAddonEnabled(i));
+
   const getIntegrationStatus = (integration) => {
-    if (integration.alwaysConnected) return 'connected';
+    if (integration.addonKey && isAddonEnabled(integration)) return 'connected';
     if (integration.comingSoon) return 'coming_soon';
     if (!integration.provider) return 'disconnected';
     return status[integration.provider]?.connected ? 'connected' : 'disconnected';
   };
 
   const getStatusDetail = (integration) => {
-    if (integration.alwaysConnected) return 'Letzte Daten: Live';
+    if (integration.addonKey && isAddonEnabled(integration)) return 'Add-on aktiv';
     if (integration.comingSoon) return 'Nicht verfuegbar';
     const providerStatus = status[integration.provider];
     if (!providerStatus?.connected) return 'Nicht verbunden';
@@ -283,7 +300,7 @@ function SettingsContent({ projectSlug }) {
       <div className="mb-8">
         <h2 className="text-sm font-medium text-ease-cream mb-4">Integrationen</h2>
         <div className="flex flex-col gap-3">
-          {INTEGRATIONS_CONFIG.map((integration) => {
+          {visibleIntegrations.map((integration) => {
             const integrationStatus = getIntegrationStatus(integration);
             const detail = getStatusDetail(integration);
 
@@ -297,7 +314,7 @@ function SettingsContent({ projectSlug }) {
                       {integration.icon}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-ease-cream">{integration.name}</p>
+                      <p className="text-sm font-medium text-ease-cream">{getAddonName(integration)}</p>
                       <p className="text-xs text-gray-500">{integration.description}</p>
                     </div>
                   </div>
@@ -311,7 +328,7 @@ function SettingsContent({ projectSlug }) {
                           <span className="w-1.5 h-1.5 bg-ease-green rounded-full" />
                           Verbunden
                         </span>
-                        {!integration.alwaysConnected && (
+                        {!integration.addonKey && (
                           <button
                             onClick={() => handleDisconnect(integration.provider)}
                             disabled={disconnecting === integration.provider}

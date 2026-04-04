@@ -12,6 +12,7 @@ const DATE_RANGES = [
   { key: '7d', label: '7 Tage', days: 7 },
   { key: '14d', label: '14 Tage', days: 14 },
   { key: '30d', label: '30 Tage', days: 30 },
+  { key: 'custom', label: 'Custom', days: null },
 ];
 
 // Metric descriptions for tooltips
@@ -144,25 +145,37 @@ function StatusDot({ status }) {
 // Column header with tooltip
 function ColumnHeader({ metricKey, label }) {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const ref = useRef(null);
   const bench = BENCHMARKS[metricKey];
   const desc = METRIC_DESCRIPTIONS[metricKey];
 
+  const handleMouseEnter = () => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
+    }
+    setShowTooltip(true);
+  };
+
   return (
     <th
       ref={ref}
-      className="text-right px-2.5 py-3 font-medium whitespace-nowrap relative"
-      onMouseEnter={() => setShowTooltip(true)}
+      className="text-right px-2.5 py-3 font-medium whitespace-nowrap"
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={() => setShowTooltip(false)}
     >
       <span className={`cursor-help ${bench ? 'border-b border-dotted border-white/20' : ''}`}>
         {label}
       </span>
       {showTooltip && (desc || bench) && (
-        <div className="metric-tooltip -translate-x-1/2 left-1/2 bottom-full mb-2">
-          {desc && <div className="text-white/80 font-normal mb-1">{desc}</div>}
+        <div
+          className="fixed z-[100] bg-[#1A1A1A] border border-white/10 rounded-xl px-4 py-3 text-[11px] leading-relaxed text-white/70 pointer-events-none whitespace-nowrap shadow-2xl shadow-black/50"
+          style={{ left: tooltipPos.x, top: tooltipPos.y - 8, transform: 'translate(-50%, -100%)' }}
+        >
+          {desc && <div className="text-white/80 font-normal mb-1.5">{desc}</div>}
           {bench && (
-            <div className="flex items-center gap-3 mt-1 pt-1 border-t border-white/10">
+            <div className="flex items-center gap-3 pt-1.5 border-t border-white/10 text-[10px]">
               <span className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-ease-green" />
                 Gut: {bench.direction === 'lower' ? '≤' : '≥'}{bench.green}{bench.unit}
@@ -180,11 +193,14 @@ function ColumnHeader({ metricKey, label }) {
 }
 
 // Ad creative preview on hover
-function AdPreview({ thumbnail, type }) {
+function AdPreview({ thumbnail, type, mouseY }) {
   if (!thumbnail) return null;
   return (
-    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-50 animate-fade-in-fast pointer-events-none">
-      <div className="rounded-xl overflow-hidden shadow-2xl shadow-black/60 border border-white/10 bg-ease-bg">
+    <div
+      className="fixed z-[100] animate-fade-in-fast pointer-events-none"
+      style={{ left: '280px', top: Math.max(mouseY - 150, 20) }}
+    >
+      <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black/70 border border-white/10 bg-ease-bg">
         {type === 'VIDEO' ? (
           <video
             src={thumbnail}
@@ -192,13 +208,13 @@ function AdPreview({ thumbnail, type }) {
             muted
             loop
             playsInline
-            className="w-48 h-48 object-cover"
+            className="w-64 h-64 object-cover"
           />
         ) : (
           <img
             src={thumbnail}
             alt=""
-            className="w-48 h-auto max-h-64 object-cover"
+            className="w-64 h-auto max-h-80 object-cover"
           />
         )}
       </div>
@@ -265,19 +281,28 @@ export default function AdsPage({ params }) {
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [selectedAdset, setSelectedAdset] = useState(null);
   const [hoveredAd, setHoveredAd] = useState(null);
+  const [mouseY, setMouseY] = useState(0);
 
   const [dateRange, setDateRange] = useState('30d');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [campaigns, setCampaigns] = useState(null);
   const [adsets, setAdsets] = useState(null);
   const [ads, setAds] = useState(null);
   const [connectedPlatforms, setConnectedPlatforms] = useState({});
+  const [clarityData, setClarityData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fetchedAt, setFetchedAt] = useState(null);
 
   const { activeSections, toggleSection, activeMetrics } = useMetricSections();
 
-  const days = DATE_RANGES.find((d) => d.key === dateRange)?.days ?? 30;
+  const selectedRange = DATE_RANGES.find((d) => d.key === dateRange);
+  const days = selectedRange?.days ?? 30;
+  const isCustom = dateRange === 'custom';
+  const dateParams = isCustom && customFrom && customTo
+    ? `from=${customFrom}&to=${customTo}`
+    : `days=${days}`;
 
   // Check connected platforms
   useEffect(() => {
@@ -299,11 +324,16 @@ export default function AdsPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/meta/campaigns?project_id=${projectId}&days=${days}`);
+      const res = await fetch(`/api/meta/campaigns?project_id=${projectId}&${dateParams}`);
       if (res.ok) {
         const data = await res.json();
         setCampaigns((data.campaigns || []).map(c => ({ ...c, provider: 'meta' })));
         setFetchedAt(data.fetched_at);
+        // Also fetch clarity data
+        fetch(`/api/clarity/per-ad?project_id=${projectId}&${dateParams}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(data => setClarityData(data?.data || null))
+          .catch(() => {});
       } else {
         const err = await res.json().catch(() => ({}));
         if (err.token_expired) {
@@ -314,7 +344,7 @@ export default function AdsPage({ params }) {
       }
     } catch { setError('Netzwerkfehler'); }
     setLoading(false);
-  }, [projectId, connectedPlatforms.meta, days]);
+  }, [projectId, connectedPlatforms.meta, dateParams]);
 
   useEffect(() => {
     if (connectedPlatforms.meta) fetchCampaigns();
@@ -326,7 +356,7 @@ export default function AdsPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/meta/adsets?project_id=${projectId}&campaign_id=${campaign.id}&days=${days}`);
+      const res = await fetch(`/api/meta/adsets?project_id=${projectId}&campaign_id=${campaign.id}&${dateParams}`);
       if (res.ok) {
         const data = await res.json();
         setAdsets((data.adsets || []).map(a => ({ ...a, provider: 'meta' })));
@@ -334,7 +364,7 @@ export default function AdsPage({ params }) {
       } else { setError('Fehler beim Laden der Anzeigengruppen'); }
     } catch { setError('Netzwerkfehler'); }
     setLoading(false);
-  }, [projectId, days]);
+  }, [projectId, dateParams]);
 
   // Fetch ads
   const fetchAds = useCallback(async (adset) => {
@@ -342,7 +372,7 @@ export default function AdsPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/meta/ads?project_id=${projectId}&adset_id=${adset.id}&days=${days}`);
+      const res = await fetch(`/api/meta/ads?project_id=${projectId}&adset_id=${adset.id}&${dateParams}`);
       if (res.ok) {
         const data = await res.json();
         setAds((data.ads || []).map(a => ({ ...a, provider: 'meta' })));
@@ -350,13 +380,13 @@ export default function AdsPage({ params }) {
       } else { setError('Fehler beim Laden der Anzeigen'); }
     } catch { setError('Netzwerkfehler'); }
     setLoading(false);
-  }, [projectId, days]);
+  }, [projectId, dateParams]);
 
   // Re-fetch on date change at drill level
   useEffect(() => {
     if (viewLevel === 'adsets' && selectedCampaign) fetchAdsets(selectedCampaign);
     else if (viewLevel === 'ads' && selectedAdset) fetchAds(selectedAdset);
-  }, [days]); // eslint-disable-line
+  }, [dateParams]); // eslint-disable-line
 
   // Navigation
   function drillIntoCampaign(campaign) {
@@ -453,6 +483,23 @@ export default function AdsPage({ params }) {
             </button>
           ))}
         </div>
+        {dateRange === 'custom' && (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              className="text-xs px-2 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white"
+            />
+            <span className="text-white/20">&ndash;</span>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+              className="text-xs px-2 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white"
+            />
+          </div>
+        )}
         <div className="w-px h-5 bg-white/[0.08]" />
         <div className="flex items-center gap-1">
           {METRIC_SECTIONS.map((s) => (
@@ -587,6 +634,7 @@ export default function AdsPage({ params }) {
                           }}
                           onMouseEnter={() => isAdsLevel && setHoveredAd(row.id)}
                           onMouseLeave={() => isAdsLevel && setHoveredAd(null)}
+                          onMouseMove={(e) => isAdsLevel && setMouseY(e.clientY)}
                           className={`border-b border-white/[0.03] table-row-hover ${
                             canDrill ? 'cursor-pointer' : ''
                           }`}
@@ -610,7 +658,7 @@ export default function AdsPage({ params }) {
                             </span>
                             {/* Hover preview */}
                             {hasPreview && hoveredAd === row.id && (
-                              <AdPreview thumbnail={row.creative_thumbnail} type={row.creative_type} />
+                              <AdPreview thumbnail={row.creative_thumbnail} type={row.creative_type} mouseY={mouseY} />
                             )}
                           </td>
                           {activeMetrics.map((m) => (
@@ -628,6 +676,54 @@ export default function AdsPage({ params }) {
           ) : (
             <div className="glass rounded-2xl p-10 text-center">
               <p className="text-ease-muted text-sm">Keine Daten für diesen Zeitraum.</p>
+            </div>
+          )}
+
+          {/* Clarity Website Quality */}
+          {clarityData && clarityData.length > 0 && (
+            <div className="mt-6 glass rounded-2xl overflow-hidden animate-fade-in">
+              <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Website-Qualität (Clarity)</h3>
+                <span className="text-[10px] text-white/20">Daten von Microsoft Clarity</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-white/[0.06] text-[11px] text-white/30 uppercase tracking-wider">
+                      <th className="text-left px-4 py-3 font-medium">Kampagne / Adset</th>
+                      <th className="text-right px-3 py-3 font-medium">Sessions</th>
+                      <th className="text-right px-3 py-3 font-medium">{'\u00D8'} Dauer</th>
+                      <th className="text-right px-3 py-3 font-medium">Scroll %</th>
+                      <th className="text-right px-3 py-3 font-medium">Engagement</th>
+                      <th className="text-right px-3 py-3 font-medium">Rage Clicks</th>
+                      <th className="text-right px-4 py-3 font-medium">Qualität</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clarityData.map((row, i) => (
+                      <tr key={i} className="border-b border-white/[0.03] table-row-hover">
+                        <td className="px-4 py-3 font-medium truncate max-w-[220px]">
+                          {row.campaign}{row.adset ? ` \u2192 ${row.adset}` : ''}
+                        </td>
+                        <td className="text-right px-3 py-3 text-ease-muted">{row.sessions}</td>
+                        <td className="text-right px-3 py-3 text-ease-muted">{row.avg_duration}s</td>
+                        <td className="text-right px-3 py-3 text-ease-muted">{row.avg_scroll}%</td>
+                        <td className="text-right px-3 py-3 text-ease-muted">{row.engagement_rate}%</td>
+                        <td className="text-right px-3 py-3 text-ease-muted">{row.rage_clicks}</td>
+                        <td className="text-right px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${
+                            row.quality_score >= 70 ? 'bg-ease-green/10 text-ease-green' :
+                            row.quality_score >= 40 ? 'bg-yellow-400/10 text-yellow-400' :
+                            'bg-ease-red/10 text-ease-red'
+                          }`}>
+                            {row.quality_score}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

@@ -10,6 +10,8 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('project_id');
     const days = parseInt(searchParams.get('days') || '30', 10);
+    const fromParam = searchParams.get('from');
+    const toParam = searchParams.get('to');
 
     if (!projectId) {
       return NextResponse.json({ error: 'project_id is required' }, { status: 400 });
@@ -34,10 +36,20 @@ export async function GET(request) {
       return NextResponse.json({ error: 'No ad account configured' }, { status: 400 });
     }
 
-    const since = new Date();
-    since.setDate(since.getDate() - days);
-    const sinceStr = since.toISOString().split('T')[0];
-    const untilStr = new Date().toISOString().split('T')[0];
+    let sinceStr, untilStr;
+    if (fromParam && toParam) {
+      sinceStr = fromParam;
+      const untilDate = new Date(toParam);
+      untilDate.setDate(untilDate.getDate() + 1);
+      untilStr = untilDate.toISOString().split('T')[0];
+    } else {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      sinceStr = since.toISOString().split('T')[0];
+      const until = new Date();
+      until.setDate(until.getDate() + 1);
+      untilStr = until.toISOString().split('T')[0];
+    }
 
     const fields = ['campaign_name', 'campaign_id', ...INSIGHT_FIELDS].join(',');
     const timeRange = JSON.stringify({ since: sinceStr, until: untilStr });
@@ -56,7 +68,7 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Token expired', token_expired: true }, { status: 401 });
       }
       // Try fallback with basic fields only (some expanded fields may not be available)
-      const basicFields = ['campaign_name', 'campaign_id', 'spend', 'impressions', 'clicks', 'reach', 'inline_link_clicks', 'actions', 'action_values', 'cpc', 'cpm', 'ctr', 'frequency'].join(',');
+      const basicFields = ['campaign_name', 'campaign_id', 'spend', 'impressions', 'clicks', 'reach', 'inline_link_clicks', 'actions', 'action_values', 'cpc', 'cpm', 'ctr', 'frequency', 'video_play_actions', 'video_thruplay_actions', 'video_p25_watched_actions', 'video_p50_watched_actions', 'video_p75_watched_actions', 'video_p100_watched_actions'].join(',');
       const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/${adAccountId}/insights?fields=${basicFields}&time_range=${timeRange}&level=campaign&limit=200&access_token=${access_token}`);
       if (!fallbackRes.ok) {
         const fallbackErr = await fallbackRes.json().catch(() => ({}));

@@ -87,22 +87,28 @@ export default function ShopifyPage({ params }) {
       )}
 
       {connected === false && (
-        <ConnectPrompt
-          provider="shopify"
-          title="Shopify"
-          description="Verbinde deinen Shopify Store, um Umsatz, Bestellungen und Conversion-Daten in Echtzeit zu tracken."
-          icon={'\u2B21'}
-          features={[
-            'Umsatz & Bestellungen pro Tag/Woche/Monat',
-            'Average Order Value (AOV) Tracking',
-            'Top-Produkte nach Umsatz & Menge',
-            'Conversion Rate & Cart Abandonment',
-            'Quiz \u2192 Kauf Attribution',
-          ]}
-          showShopInput={!process.env.NEXT_PUBLIC_SHOPIFY_CUSTOM_DIST}
-          projectId={projectId}
-          projectSlug={projectSlug}
-        />
+        <div className="bg-ease-card border border-ease-border rounded-2xl p-8 max-w-lg mx-auto text-center">
+          <div className="text-4xl mb-4 opacity-60">{'\u2B21'}</div>
+          <h2 className="text-lg font-semibold text-ease-cream mb-2">Shopify verbinden</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Verbinde deinen Shopify Store, um Umsatz, Bestellungen und Conversion-Daten in Echtzeit zu tracken.
+          </p>
+          <div className="text-left mb-6">
+            <p className="text-xs text-gray-400 mb-3">So gehts:</p>
+            <ol className="text-xs text-gray-500 space-y-1 list-decimal list-inside">
+              <li>Shopify Admin &rarr; Einstellungen &rarr; Apps und Vertriebskanaele &rarr; <strong className="text-gray-400">Apps entwickeln</strong></li>
+              <li>App erstellen (z.B. &quot;DAYNYT Dashboard&quot;)</li>
+              <li>API-Berechtigung: <code className="text-gray-400">read_orders, read_products, read_analytics</code></li>
+              <li>App installieren &rarr; <strong className="text-gray-400">Admin API Access Token</strong> kopieren</li>
+            </ol>
+          </div>
+          <Link
+            href={`/dashboard/${projectSlug}/settings`}
+            className="inline-block text-sm px-5 py-2.5 bg-ease-accent text-black font-medium rounded-xl hover:bg-ease-accent/90 transition-colors"
+          >
+            In Einstellungen verbinden
+          </Link>
+        </div>
       )}
 
       {connected === true && (

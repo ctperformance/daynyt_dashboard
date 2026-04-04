@@ -197,19 +197,19 @@ export default function ProjectOverview({ params }) {
   return (
     <div className="px-8 py-8 max-w-6xl">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm mb-1">
-        <Link href="/dashboard" className="text-gray-500 hover:text-ease-cream transition-colors">
+      <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
+        <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">
           Dashboard
         </Link>
-        <span className="text-gray-600">/</span>
-        <span className="text-ease-cream font-medium">{projectName}</span>
+        <span className="text-white/20">/</span>
+        <span className="text-white font-medium">{projectName}</span>
       </div>
 
       {/* Header + Date Range */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 animate-fade-in">
         <div>
-          <h1 className="text-2xl font-semibold text-ease-cream">{projectName}</h1>
-          <p className="text-sm text-gray-500 mt-1">{today}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{projectName}</h1>
+          <p className="text-xs text-ease-muted mt-1">{today}</p>
         </div>
         <DateRangeSelector selected={dateRange} onChange={setDateRange} />
       </div>
@@ -231,7 +231,7 @@ export default function ProjectOverview({ params }) {
       </div>
 
       {/* Channel Performance Grid */}
-      <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">
+      <h2 className="text-sm font-semibold mb-4">
         Kanal-Performance
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -256,28 +256,28 @@ export default function ProjectOverview({ params }) {
       </div>
 
       {/* Quick Stats Row */}
-      <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">
+      <h2 className="text-sm font-semibold mb-4">
         Schnell-Statistiken
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-ease-card border border-ease-border rounded-xl px-5 py-4">
-          <p className="text-xs text-gray-500 mb-1">Quiz-Leads</p>
-          <p className="text-2xl font-bold text-ease-cream">
+        <div className="glass rounded-2xl px-5 py-4">
+          <p className="text-[10px] text-white/30 uppercase mb-1">Quiz-Leads</p>
+          <p className="text-2xl font-bold">
             {quizStats?.submissions?.length ?? '--'}
           </p>
         </div>
-        <div className="bg-ease-card border border-ease-border rounded-xl px-5 py-4">
-          <p className="text-xs text-gray-500 mb-1">E-Mail Subscribers</p>
-          <p className="text-2xl font-bold text-ease-cream">
+        <div className="glass rounded-2xl px-5 py-4">
+          <p className="text-[10px] text-white/30 uppercase mb-1">E-Mail Subscribers</p>
+          <p className="text-2xl font-bold">
             {channelData.klaviyo?.subscribers ? fmt(channelData.klaviyo.subscribers) : '--'}
           </p>
           {!integrationStatus.klaviyo?.connected && (
-            <p className="text-[11px] text-gray-600 mt-0.5">Klaviyo verbinden</p>
+            <p className="text-[11px] text-white/20 mt-0.5">Klaviyo verbinden</p>
           )}
         </div>
-        <div className="bg-ease-card border border-ease-border rounded-xl px-5 py-4">
-          <p className="text-xs text-gray-500 mb-1">Conversion Rate</p>
-          <p className="text-2xl font-bold text-ease-cream">
+        <div className="glass rounded-2xl px-5 py-4">
+          <p className="text-[10px] text-white/30 uppercase mb-1">Conversion Rate</p>
+          <p className="text-2xl font-bold">
             {shopifyOrders > 0 && (channelData.google?.clicks || 0) > 0
               ? ((shopifyOrders / channelData.google.clicks) * 100).toFixed(1) + '%'
               : '--'}
@@ -286,10 +286,10 @@ export default function ProjectOverview({ params }) {
       </div>
 
       {/* Integration Hint */}
-      <div className="border border-dashed border-ease-border rounded-xl p-6 text-center">
-        <p className="text-sm text-gray-500">
+      <div className="glass rounded-2xl p-6 border-dashed text-center">
+        <p className="text-sm text-ease-muted">
           Weitere Integrationen? Verbinde neue Datenquellen unter{' '}
-          <Link href={`/dashboard/${projectSlug}/settings`} className="text-ease-accent hover:underline">
+          <Link href={`/dashboard/${projectSlug}/settings`} className="text-white hover:text-white/70">
             Einstellungen
           </Link>
         </p>
@@ -307,19 +307,19 @@ function ChannelPerformanceCard({ channelKey, config, connected, data, projectSl
     return (
       <Link
         href={href}
-        className="group bg-ease-card border border-ease-border rounded-xl p-5 hover:border-ease-accent/30 transition-all duration-200"
+        className="group glass rounded-2xl p-5 hover:border-white/10 transition-all"
       >
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-white/5 text-gray-600">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-white/[0.04] text-ease-muted">
             {config.icon}
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500">{config.title}</h3>
-            <p className="text-xs text-gray-600">Nicht verbunden</p>
+            <h3 className="text-sm font-medium text-ease-muted">{config.title}</h3>
+            <p className="text-xs text-white/20">Nicht verbunden</p>
           </div>
         </div>
-        <p className="text-xs text-ease-accent group-hover:underline">
-          In Einstellungen verbinden &rarr;
+        <p className="text-xs text-ease-muted group-hover:text-white transition-colors">
+          In Einstellungen verbinden {'\u2192'}
         </p>
       </Link>
     );
@@ -334,14 +334,14 @@ function ChannelPerformanceCard({ channelKey, config, connected, data, projectSl
   return (
     <Link
       href={href}
-      className="group bg-ease-card border border-ease-border rounded-xl p-5 hover:border-ease-accent/30 transition-all duration-200"
+      className="group glass rounded-2xl p-5 hover:border-white/10 transition-all"
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-ease-accent/10 text-ease-accent">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-white/[0.04] text-white/50">
             {config.icon}
           </div>
-          <h3 className="text-sm font-medium text-ease-cream group-hover:text-ease-accent transition-colors">
+          <h3 className="text-sm font-medium group-hover:text-white transition-colors">
             {config.title}
           </h3>
         </div>
@@ -351,20 +351,20 @@ function ChannelPerformanceCard({ channelKey, config, connected, data, projectSl
         </span>
       </div>
 
-      <div className="flex gap-6 pt-3 border-t border-ease-border/50">
+      <div className="flex gap-6 pt-3 border-t border-white/[0.06]">
         {config.kpis.map((label, idx) => (
           <div key={label}>
-            <span className="text-lg font-semibold text-ease-cream">
+            <span className="text-lg font-semibold">
               {data ? fmt(data[config.kpiKeys[idx]]) : '--'}
             </span>
-            <span className="text-[11px] text-gray-500 ml-1.5">{label}</span>
+            <span className="text-[11px] text-ease-muted ml-1.5">{label}</span>
           </div>
         ))}
       </div>
 
       <div className="flex justify-end mt-2">
-        <span className="text-gray-600 group-hover:text-ease-accent group-hover:translate-x-1 transition-all text-sm">
-          &rarr;
+        <span className="text-white/15 group-hover:text-white/50 group-hover:translate-x-1 transition-all text-sm">
+          {'\u2192'}
         </span>
       </div>
     </Link>

@@ -8,7 +8,7 @@ export const INSIGHT_FIELDS = [
   'actions', 'action_values',
   'cpc', 'cpm', 'ctr', 'frequency',
   'video_play_actions',
-  'video_thruplay_actions',
+  'video_thruplay_watched_actions',
   'video_p25_watched_actions', 'video_p50_watched_actions',
   'video_p75_watched_actions', 'video_p100_watched_actions',
 ];
@@ -34,7 +34,7 @@ export function parseInsightsRow(row) {
   const revenue = getActionValue(row.action_values, 'purchase');
 
   const video3s = parseInt(row.video_play_actions?.[0]?.value || '0', 10);
-  const thruplay = parseInt(row.video_thruplay_actions?.[0]?.value || '0', 10);
+  const thruplay = parseInt(row.video_thruplay_watched_actions?.[0]?.value || '0', 10);
   const videoP25 = parseInt(row.video_p25_watched_actions?.[0]?.value || '0', 10);
   const videoP50 = parseInt(row.video_p50_watched_actions?.[0]?.value || '0', 10);
   const videoP75 = parseInt(row.video_p75_watched_actions?.[0]?.value || '0', 10);

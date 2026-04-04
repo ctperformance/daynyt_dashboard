@@ -68,7 +68,7 @@ export async function GET(request) {
         return NextResponse.json({ error: 'Token expired', token_expired: true }, { status: 401 });
       }
       // Try fallback with basic fields only (some expanded fields may not be available)
-      const basicFields = ['campaign_name', 'campaign_id', 'spend', 'impressions', 'clicks', 'reach', 'inline_link_clicks', 'actions', 'action_values', 'cpc', 'cpm', 'ctr', 'frequency', 'video_play_actions', 'video_thruplay_actions', 'video_p25_watched_actions', 'video_p50_watched_actions', 'video_p75_watched_actions', 'video_p100_watched_actions'].join(',');
+      const basicFields = ['campaign_name', 'campaign_id', 'spend', 'impressions', 'clicks', 'reach', 'inline_link_clicks', 'actions', 'action_values', 'cpc', 'cpm', 'ctr', 'frequency', 'video_play_actions', 'video_thruplay_watched_actions', 'video_p25_watched_actions', 'video_p50_watched_actions', 'video_p75_watched_actions', 'video_p100_watched_actions'].join(',');
       const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/${adAccountId}/insights?fields=${basicFields}&time_range=${timeRange}&level=campaign&limit=200&access_token=${access_token}`);
       if (!fallbackRes.ok) {
         const fallbackErr = await fallbackRes.json().catch(() => ({}));

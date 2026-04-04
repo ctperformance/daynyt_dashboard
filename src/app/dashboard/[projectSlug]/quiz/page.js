@@ -22,7 +22,7 @@ export default function QuizPage({ params }) {
   const { userProjects } = useAuth();
   const [days, setDays] = useState(30);
   const [liveData, setLiveData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
   const project = userProjects.find((p) => p.slug === projectSlug);
@@ -50,35 +50,59 @@ export default function QuizPage({ params }) {
       .finally(() => setLoading(false));
   }, [project, days]);
 
-  // Empty state
-  if (!loading && !hasData) {
+  // Loading state
+  if (loading) {
     return (
       <div className="px-8 py-8 max-w-7xl">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm mb-1">
-          <Link href="/dashboard" className="text-gray-500 hover:text-ease-cream transition-colors">Dashboard</Link>
-          <span className="text-gray-600">/</span>
-          <Link href={`/dashboard/${projectSlug}`} className="text-gray-500 hover:text-ease-cream transition-colors">{projectName}</Link>
-          <span className="text-gray-600">/</span>
-          <span className="text-ease-cream font-medium">Quiz</span>
+        <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
+          <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
+          <span className="text-white/20">/</span>
+          <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
+          <span className="text-white/20">/</span>
+          <span className="text-white font-medium">Quiz</span>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight mb-8 animate-fade-in">Nervensystem-Quiz</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="glass rounded-2xl p-5 space-y-3">
+              <div className="skeleton h-3 w-16 rounded" />
+              <div className="skeleton h-6 w-24 rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="glass rounded-2xl p-6 h-48"><div className="skeleton h-full w-full rounded" /></div>
+          <div className="glass rounded-2xl p-6 h-48"><div className="skeleton h-full w-full rounded" /></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (!hasData) {
+    return (
+      <div className="px-8 py-8 max-w-7xl">
+        <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
+          <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
+          <span className="text-white/20">/</span>
+          <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
+          <span className="text-white/20">/</span>
+          <span className="text-white font-medium">Quiz</span>
         </div>
 
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold text-ease-cream">Nervensystem-Quiz</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Quiz Analytics & Funnel-Daten</p>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight mb-8 animate-fade-in">Nervensystem-Quiz</h1>
 
-        <div className="bg-ease-card border border-ease-border rounded-2xl p-12 text-center max-w-lg mx-auto">
-          <div className="w-16 h-16 bg-ease-accent/10 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
-            ✦
+        <div className="glass rounded-2xl p-16 text-center max-w-lg mx-auto animate-fade-in">
+          <div className="w-14 h-14 rounded-xl bg-white/[0.04] flex items-center justify-center text-2xl mx-auto mb-4">
+            {'\u2726'}
           </div>
-          <h2 className="text-lg font-semibold text-ease-cream mb-2">Noch keine Quiz-Daten vorhanden</h2>
-          <p className="text-sm text-gray-500 mb-6">
+          <h2 className="text-base font-semibold mb-2">Noch keine Quiz-Daten vorhanden</h2>
+          <p className="text-sm text-ease-muted mb-6">
             Verbinde dein Quiz über die Einstellungen, um Abschlüsse, Funnel-Daten und Stress-Analysen zu sehen.
           </p>
           <Link
             href={`/dashboard/${projectSlug}/settings`}
-            className="inline-flex items-center gap-2 bg-ease-accent hover:bg-ease-accent/90 text-black font-medium text-sm px-5 py-2.5 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white font-medium text-xs px-5 py-2.5 rounded-lg transition-all"
           >
             Einstellungen öffnen
           </Link>
@@ -114,59 +138,65 @@ export default function QuizPage({ params }) {
   return (
     <div className="px-8 py-8 max-w-7xl">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm mb-1">
-        <Link href="/dashboard" className="text-gray-500 hover:text-ease-cream transition-colors">Dashboard</Link>
-        <span className="text-gray-600">/</span>
-        <Link href={`/dashboard/${projectSlug}`} className="text-gray-500 hover:text-ease-cream transition-colors">{projectName}</Link>
-        <span className="text-gray-600">/</span>
-        <span className="text-ease-cream font-medium">Quiz</span>
+      <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
+        <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
+        <span className="text-white/20">/</span>
+        <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
+        <span className="text-white/20">/</span>
+        <span className="text-white font-medium">Quiz</span>
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8 animate-fade-in">
         <div>
-          <h1 className="text-xl font-semibold text-ease-cream">Nervensystem-Quiz</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Quiz Analytics & Funnel-Daten</p>
+          <h1 className="text-2xl font-bold tracking-tight">Nervensystem-Quiz</h1>
+          <p className="text-xs text-ease-muted mt-1">Quiz Analytics & Funnel-Daten</p>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-            className="bg-ease-card border border-ease-border rounded-lg px-3 py-1.5 text-sm text-ease-cream focus:outline-none focus:border-ease-accent"
-          >
-            <option value={7}>Letzte 7 Tage</option>
-            <option value={14}>Letzte 14 Tage</option>
-            <option value={30}>Letzte 30 Tage</option>
-            <option value={90}>Letzte 90 Tage</option>
-          </select>
-          {loading && <span className="text-xs text-ease-accent">Laden...</span>}
+        <div className="flex items-center gap-1">
+          {[7, 14, 30, 90].map((d) => (
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              className={`text-xs px-3 py-1.5 rounded-lg transition-all ${
+                days === d
+                  ? 'bg-white/10 text-white font-medium'
+                  : 'text-ease-muted hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              {d}T
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="flex flex-col gap-6">
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard title="Quiz-Abschlüsse" value={totalSubmissions} subtitle={`in ${days} Tagen`} trend={12} />
-          <KpiCard title="Avg. Stress-Score" value={avgStress} subtitle="von 100" trend={-3} />
-          <KpiCard title="Completion Rate" value={`${completionRate}%`} subtitle="Intro → Ergebnis" trend={5} />
-          <KpiCard title="E-Mail Capture" value={`${emailRate}%`} subtitle="der Quiz-Starter" trend={8} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in" style={{ animationDelay: '0.05s' }}>
+          <KpiCard title="Quiz-Abschlüsse" value={totalSubmissions} />
+          <KpiCard title="Avg. Stress-Score" value={avgStress} />
+          <KpiCard title="Completion Rate" value={`${completionRate}%`} />
+          <KpiCard title="E-Mail Capture" value={`${emailRate}%`} />
         </div>
 
         {/* Funnel + Time Series */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
           {funnel.length > 0 && <FunnelChart data={funnel} />}
           {timeSeries.length > 0 && <TimeSeriesChart data={timeSeries} />}
         </div>
 
         {/* Stress Distribution + Symptoms + Wishes */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-in" style={{ animationDelay: '0.15s' }}>
           {stressDist.length > 0 && <StressDistChart data={stressDist} />}
           {symptoms.length > 0 && <HorizontalBarList title="Top Symptome (Frage 4)" data={symptoms} color="#ef4444" />}
-          {wishes.length > 0 && <HorizontalBarList title="Grösste Wünsche (Frage 7)" data={wishes} color="#22c55e" />}
+          {wishes.length > 0 && <HorizontalBarList title="Größte Wünsche (Frage 7)" data={wishes} color="#22c55e" />}
         </div>
 
         {/* Recent Submissions */}
-        {submissions.length > 0 && <RecentSubmissions submissions={submissions} limit={15} />}
+        {submissions.length > 0 && (
+          <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <RecentSubmissions submissions={submissions} limit={15} />
+          </div>
+        )}
       </div>
     </div>
   );

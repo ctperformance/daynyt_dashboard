@@ -1,15 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useCallback, use } from 'react';
+import { useState, useEffect, useCallback, useRef, use } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import KpiCard from '@/components/KpiCard';
 import { evaluateMetric, BENCHMARKS } from '@/lib/meta-benchmarks';
-
-const PLATFORMS = [
-  { key: 'all', label: 'Alle' },
-  { key: 'meta', label: 'Meta', icon: '\u25CE' },
-];
 
 const DATE_RANGES = [
   { key: 'today', label: 'Heute', days: 0 },
@@ -18,6 +13,36 @@ const DATE_RANGES = [
   { key: '14d', label: '14 Tage', days: 14 },
   { key: '30d', label: '30 Tage', days: 30 },
 ];
+
+// Metric descriptions for tooltips
+const METRIC_DESCRIPTIONS = {
+  spend: 'Gesamtausgaben für Werbung',
+  roas: 'Return on Ad Spend — Umsatz pro ausgegebenem Euro',
+  cpa: 'Cost per Acquisition — Kosten pro Kauf',
+  cpc: 'Cost per Click — Kosten pro Link-Klick',
+  cpm: 'Cost per Mille — Kosten pro 1.000 Impressionen',
+  ctr: 'Click-Through-Rate — Link-Klicks / Impressionen',
+  ctr_all: 'CTR (alle) — Alle Klicks / Impressionen',
+  impressions: 'Wie oft deine Anzeige angezeigt wurde',
+  link_clicks: 'Klicks auf den Link in der Anzeige',
+  lp_views: 'Landing Page Views — Nutzer, die die Seite geladen haben',
+  atc: 'Add to Cart — Produkt in den Warenkorb gelegt',
+  checkout_initiated: 'Checkout gestartet',
+  purchases: 'Abgeschlossene Käufe',
+  revenue: 'Gesamtumsatz aus Käufen',
+  cvr: 'Conversion Rate — Käufe / Link-Klicks',
+  atc_rate: 'ATC-Rate — Warenkorb / Landing Page Views',
+  checkout_rate: 'Checkout-Rate — Checkout / Warenkorb',
+  cost_per_lpv: 'Kosten pro Landing Page View',
+  cost_per_atc: 'Kosten pro Add to Cart',
+  lpv_click_ratio: 'Anteil der Klicks, die tatsächlich die Seite laden',
+  frequency: 'Durchschnittliche Häufigkeit pro Person',
+  hook_rate: 'Hook Rate — 3-Sek. Views / Impressionen (wie viele schauen hin)',
+  hold_rate: 'Hold Rate — ThruPlay / 3-Sek. Views (wie viele bleiben dran)',
+  video_view_rate_25: 'Anteil der Impressionen mit 25% Video gesehen',
+  video_view_rate_50: 'Anteil der Impressionen mit 50% Video gesehen',
+  video_view_rate_100: 'Anteil der Impressionen mit 100% Video gesehen',
+};
 
 // Metric sections for the table
 const METRIC_SECTIONS = [
@@ -40,7 +65,7 @@ const METRIC_SECTIONS = [
       { key: 'lp_views', label: 'LPV', format: 'int' },
       { key: 'atc', label: 'ATC', format: 'int' },
       { key: 'checkout_initiated', label: 'Checkout', format: 'int' },
-      { key: 'purchases', label: 'Kaeufe', format: 'int' },
+      { key: 'purchases', label: 'Käufe', format: 'int' },
       { key: 'revenue', label: 'Umsatz', format: 'eur' },
     ],
   },
@@ -89,22 +114,16 @@ function formatValue(value, format) {
 
 // Benchmark color classes
 const COLOR_CLASSES = {
-  green: 'text-green-400',
+  green: 'text-ease-green',
   yellow: 'text-yellow-400',
-  red: 'text-red-400',
-};
-
-const COLOR_BG_CLASSES = {
-  green: 'bg-green-500/10 text-green-400 border-green-500/30',
-  yellow: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
-  red: 'bg-red-500/10 text-red-400 border-red-500/30',
+  red: 'text-ease-red',
 };
 
 function MetricCell({ value, metricKey, format }) {
   const color = evaluateMetric(metricKey, value);
   const formatted = formatValue(value, format);
   if (!color || value === 0) {
-    return <span className="text-gray-500">{formatted}</span>;
+    return <span className="text-ease-muted">{formatted}</span>;
   }
   return <span className={COLOR_CLASSES[color]}>{formatted}</span>;
 }
@@ -113,9 +132,78 @@ function MetricCell({ value, metricKey, format }) {
 function StatusDot({ status }) {
   const isActive = status === 'ACTIVE';
   const isPaused = status === 'PAUSED';
-  const color = isActive ? 'bg-green-500' : isPaused ? 'bg-yellow-500' : 'bg-gray-600';
+  const color = isActive ? 'bg-ease-green' : isPaused ? 'bg-yellow-400' : 'bg-ease-muted';
   const label = isActive ? 'Aktiv' : isPaused ? 'Pausiert' : status;
-  return <span className={`inline-block w-2 h-2 rounded-full ${color}`} title={label} />;
+  return (
+    <span className="flex items-center gap-1.5" title={label}>
+      <span className={`inline-block w-1.5 h-1.5 rounded-full ${color}`} />
+    </span>
+  );
+}
+
+// Column header with tooltip
+function ColumnHeader({ metricKey, label }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const ref = useRef(null);
+  const bench = BENCHMARKS[metricKey];
+  const desc = METRIC_DESCRIPTIONS[metricKey];
+
+  return (
+    <th
+      ref={ref}
+      className="text-right px-2.5 py-3 font-medium whitespace-nowrap relative"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <span className={`cursor-help ${bench ? 'border-b border-dotted border-white/20' : ''}`}>
+        {label}
+      </span>
+      {showTooltip && (desc || bench) && (
+        <div className="metric-tooltip -translate-x-1/2 left-1/2 bottom-full mb-2">
+          {desc && <div className="text-white/80 font-normal mb-1">{desc}</div>}
+          {bench && (
+            <div className="flex items-center gap-3 mt-1 pt-1 border-t border-white/10">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-ease-green" />
+                Gut: {bench.direction === 'lower' ? '≤' : '≥'}{bench.green}{bench.unit}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                OK: {bench.direction === 'lower' ? '≤' : '≥'}{bench.yellow}{bench.unit}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </th>
+  );
+}
+
+// Ad creative preview on hover
+function AdPreview({ thumbnail, type }) {
+  if (!thumbnail) return null;
+  return (
+    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-50 animate-fade-in-fast pointer-events-none">
+      <div className="rounded-xl overflow-hidden shadow-2xl shadow-black/60 border border-white/10 bg-ease-bg">
+        {type === 'VIDEO' ? (
+          <video
+            src={thumbnail}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-48 h-48 object-cover"
+          />
+        ) : (
+          <img
+            src={thumbnail}
+            alt=""
+            className="w-48 h-auto max-h-64 object-cover"
+          />
+        )}
+      </div>
+    </div>
+  );
 }
 
 // Metric section toggle
@@ -130,6 +218,40 @@ function useMetricSections() {
   return { activeSections, toggleSection, activeMetrics };
 }
 
+// Loading skeleton rows
+function SkeletonTable({ rows = 5, cols = 8 }) {
+  return (
+    <div className="glass rounded-2xl overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              <th className="text-left px-3 py-3 w-6"><div className="skeleton h-3 w-3 rounded-full" /></th>
+              <th className="text-left px-3 py-3 min-w-[180px]"><div className="skeleton h-3 w-32 rounded" /></th>
+              {Array.from({ length: cols }).map((_, i) => (
+                <th key={i} className="text-right px-2.5 py-3"><div className="skeleton h-3 w-14 rounded ml-auto" /></th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: rows }).map((_, i) => (
+              <tr key={i} className="border-b border-white/[0.03]">
+                <td className="px-3 py-3"><div className="skeleton h-2 w-2 rounded-full" /></td>
+                <td className="px-3 py-3"><div className="skeleton h-3 w-40 rounded" style={{ animationDelay: `${i * 100}ms` }} /></td>
+                {Array.from({ length: cols }).map((_, j) => (
+                  <td key={j} className="text-right px-2.5 py-3">
+                    <div className="skeleton h-3 w-12 rounded ml-auto" style={{ animationDelay: `${(i * cols + j) * 30}ms` }} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function AdsPage({ params }) {
   const { projectSlug } = use(params);
   const { userProjects } = useAuth();
@@ -142,8 +264,8 @@ export default function AdsPage({ params }) {
   const [viewLevel, setViewLevel] = useState('campaigns');
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [selectedAdset, setSelectedAdset] = useState(null);
+  const [hoveredAd, setHoveredAd] = useState(null);
 
-  const [platform, setPlatform] = useState('all');
   const [dateRange, setDateRange] = useState('30d');
   const [campaigns, setCampaigns] = useState(null);
   const [adsets, setAdsets] = useState(null);
@@ -285,30 +407,29 @@ export default function AdsPage({ params }) {
   return (
     <div className="px-8 py-8 max-w-[1600px]">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm mb-1">
-        <Link href="/dashboard" className="text-gray-500 hover:text-ease-cream transition-colors">Dashboard</Link>
-        <span className="text-gray-600">/</span>
-        <Link href={`/dashboard/${projectSlug}`} className="text-gray-500 hover:text-ease-cream transition-colors">{projectName}</Link>
-        <span className="text-gray-600">/</span>
-        <span className="text-ease-cream font-medium">Ads Manager</span>
+      <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
+        <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
+        <span className="text-white/20">/</span>
+        <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
+        <span className="text-white/20">/</span>
+        <span className="text-white font-medium">Ads Manager</span>
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-ease-cream">Ads Manager</h1>
+      <div className="flex items-center justify-between mb-8 animate-fade-in">
+        <h1 className="text-2xl font-bold tracking-tight">Ads Manager</h1>
         <div className="flex items-center gap-3">
-          {/* Refresh */}
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg text-gray-400 hover:text-ease-cream hover:bg-white/5 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg text-ease-muted hover:text-white hover:bg-white/[0.04] transition-all disabled:opacity-40"
             title="Daten aktualisieren"
           >
-            <span className={loading ? 'animate-spin' : ''}>&#8635;</span>
+            <span className={`text-sm ${loading ? 'animate-spin' : ''}`}>&#8635;</span>
             Aktualisieren
           </button>
           {fetchedAt && (
-            <span className="text-[10px] text-gray-600">
+            <span className="text-[10px] text-white/20">
               {new Date(fetchedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
             </span>
           )}
@@ -316,31 +437,32 @@ export default function AdsPage({ params }) {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-4 mb-4">
-        <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-4 mb-6 animate-fade-in" style={{ animationDelay: '0.05s' }}>
+        <div className="flex items-center gap-1">
           {DATE_RANGES.map((d) => (
             <button
               key={d.key}
               onClick={() => setDateRange(d.key)}
-              className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
-                dateRange === d.key ? 'bg-ease-accent/10 text-ease-accent font-medium' : 'text-gray-500 hover:text-ease-cream hover:bg-white/5'
+              className={`text-xs px-3 py-1.5 rounded-lg transition-all ${
+                dateRange === d.key
+                  ? 'bg-white/10 text-white font-medium'
+                  : 'text-ease-muted hover:text-white hover:bg-white/[0.04]'
               }`}
             >
               {d.label}
             </button>
           ))}
         </div>
-        <div className="w-px h-6 bg-ease-border" />
-        {/* Section toggles */}
-        <div className="flex items-center gap-1.5">
+        <div className="w-px h-5 bg-white/[0.08]" />
+        <div className="flex items-center gap-1">
           {METRIC_SECTIONS.map((s) => (
             <button
               key={s.label}
               onClick={() => toggleSection(s.label)}
-              className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
+              className={`text-xs px-3 py-1.5 rounded-lg transition-all ${
                 activeSections.includes(s.label)
-                  ? 'bg-ease-accent/10 text-ease-accent font-medium'
-                  : 'text-gray-600 hover:text-gray-400 hover:bg-white/5'
+                  ? 'bg-white/10 text-white font-medium'
+                  : 'text-white/25 hover:text-ease-muted hover:bg-white/[0.04]'
               }`}
             >
               {s.label}
@@ -351,43 +473,56 @@ export default function AdsPage({ params }) {
 
       {/* Not connected */}
       {!loading && !hasAnyConnection && (
-        <div className="bg-ease-card border border-ease-border rounded-xl p-12 text-center">
-          <h2 className="text-lg font-semibold text-ease-cream mb-2">Keine Werbeplattformen verbunden</h2>
-          <p className="text-sm text-gray-500 mb-6">Verbinde Meta Ads unter Einstellungen.</p>
-          <Link href={`/dashboard/${projectSlug}/settings`} className="text-sm px-4 py-2 rounded-lg bg-ease-accent/10 text-ease-accent hover:bg-ease-accent/20 transition-colors">
+        <div className="glass rounded-2xl p-16 text-center animate-fade-in">
+          <div className="w-12 h-12 rounded-xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
+            <span className="text-xl text-ease-muted">&#9678;</span>
+          </div>
+          <h2 className="text-base font-semibold mb-2">Keine Werbeplattformen verbunden</h2>
+          <p className="text-sm text-ease-muted mb-6">Verbinde Meta Ads unter Einstellungen.</p>
+          <Link href={`/dashboard/${projectSlug}/settings`} className="text-xs px-5 py-2 rounded-lg bg-white/10 text-white hover:bg-white/15 transition-all">
             Einstellungen
           </Link>
         </div>
       )}
 
-      {/* Loading */}
+      {/* Loading skeleton */}
       {loading && hasAnyConnection && (
-        <div className="text-center py-20">
-          <div className="text-gray-600 text-sm">{levelLabels[viewLevel]} werden geladen...</div>
+        <div className="animate-fade-in">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="glass rounded-2xl p-5 space-y-3" style={{ animationDelay: `${i * 50}ms` }}>
+                <div className="skeleton h-3 w-16 rounded" />
+                <div className="skeleton h-6 w-24 rounded" />
+              </div>
+            ))}
+          </div>
+          <SkeletonTable rows={6} cols={activeMetrics.length} />
         </div>
       )}
 
       {/* Error */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-xl mb-6">{error}</div>
+        <div className="bg-ease-red/5 border border-ease-red/20 text-ease-red text-sm px-4 py-3 rounded-xl mb-6 animate-fade-in">
+          {error}
+        </div>
       )}
 
       {/* Content */}
       {!loading && hasAnyConnection && currentData && (
-        <>
+        <div className="animate-fade-in">
           {/* Drill-down breadcrumb */}
           {viewLevel !== 'campaigns' && (
-            <div className="flex items-center gap-1.5 text-sm mb-4 flex-wrap">
-              <button onClick={goToCampaigns} className="text-gray-500 hover:text-ease-accent transition-colors">Alle Kampagnen</button>
-              <span className="text-gray-600">&rsaquo;</span>
+            <div className="flex items-center gap-1.5 text-sm mb-5 flex-wrap">
+              <button onClick={goToCampaigns} className="text-ease-muted hover:text-white transition-colors">Alle Kampagnen</button>
+              <span className="text-white/15">&#8250;</span>
               {viewLevel === 'ads' ? (
                 <>
-                  <button onClick={goToAdsets} className="text-gray-500 hover:text-ease-accent transition-colors">{selectedCampaign?.name}</button>
-                  <span className="text-gray-600">&rsaquo;</span>
-                  <span className="text-ease-cream font-medium">{selectedAdset?.name}</span>
+                  <button onClick={goToAdsets} className="text-ease-muted hover:text-white transition-colors">{selectedCampaign?.name}</button>
+                  <span className="text-white/15">&#8250;</span>
+                  <span className="text-white font-medium">{selectedAdset?.name}</span>
                 </>
               ) : (
-                <span className="text-ease-cream font-medium">{selectedCampaign?.name}</span>
+                <span className="text-white font-medium">{selectedCampaign?.name}</span>
               )}
             </div>
           )}
@@ -395,15 +530,15 @@ export default function AdsPage({ params }) {
           {/* KPI Summary */}
           {totals && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <KpiCard title="Ausgaben" value={`\u20AC${fmt(totals.spend)}`} icon={'\u25CE'} />
+              <KpiCard title="Ausgaben" value={`\u20AC${fmt(totals.spend)}`} />
               <KpiCard title="ROAS" value={
-                <span className={COLOR_CLASSES[evaluateMetric('roas', totalRoas)] || 'text-ease-cream'}>
+                <span className={COLOR_CLASSES[evaluateMetric('roas', totalRoas)] || 'text-white'}>
                   {fmt(totalRoas)}x
                 </span>
               } />
-              <KpiCard title="Kaeufe" value={fmtInt(totals.purchases)} />
+              <KpiCard title="Käufe" value={fmtInt(totals.purchases)} />
               <KpiCard title="CPA" value={
-                <span className={COLOR_CLASSES[evaluateMetric('cpa', totalCpa)] || 'text-ease-cream'}>
+                <span className={COLOR_CLASSES[evaluateMetric('cpa', totalCpa)] || 'text-white'}>
                   &euro;{fmt(totalCpa)}
                 </span>
               } />
@@ -412,41 +547,37 @@ export default function AdsPage({ params }) {
 
           {/* Level header */}
           <div className="flex items-center gap-3 mb-3">
-            <h2 className="text-sm font-medium text-ease-cream">{levelLabels[viewLevel]}</h2>
-            <span className="text-xs text-gray-600">{currentData.length} Eintraege</span>
+            <h2 className="text-sm font-semibold">{levelLabels[viewLevel]}</h2>
+            <span className="text-[11px] text-white/20">{currentData.length} Einträge</span>
             {viewLevel !== 'campaigns' && (
               <button
                 onClick={viewLevel === 'ads' ? goToAdsets : goToCampaigns}
-                className="ml-auto text-xs text-gray-500 hover:text-ease-accent transition-colors"
+                className="ml-auto text-xs text-ease-muted hover:text-white transition-colors flex items-center gap-1"
               >
-                &larr; Zurueck
+                <span>&#8592;</span> Zurück
               </button>
             )}
           </div>
 
           {/* Data Table */}
           {currentData.length > 0 ? (
-            <div className="bg-ease-card border border-ease-border rounded-xl overflow-hidden">
+            <div className="glass rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-ease-border text-[11px] text-gray-500">
-                      {viewLevel === 'campaigns' && <th className="text-left px-3 py-2.5 font-medium w-6"></th>}
-                      <th className="text-left px-3 py-2.5 font-medium min-w-[180px] sticky left-0 bg-ease-card z-10">Name</th>
+                    <tr className="border-b border-white/[0.06] text-[11px] text-white/30 uppercase tracking-wider">
+                      {viewLevel === 'campaigns' && <th className="text-left px-3 py-3 font-medium w-6"></th>}
+                      <th className="text-left px-3 py-3 font-medium min-w-[180px] sticky left-0 bg-[#151515] z-10">Name</th>
                       {activeMetrics.map((m) => (
-                        <th key={m.key} className="text-right px-2.5 py-2.5 font-medium whitespace-nowrap">
-                          {BENCHMARKS[m.key] ? (
-                            <span title={`Gut: ${BENCHMARKS[m.key].green}${BENCHMARKS[m.key].unit} | OK: ${BENCHMARKS[m.key].yellow}${BENCHMARKS[m.key].unit}`}>
-                              {m.label}
-                            </span>
-                          ) : m.label}
-                        </th>
+                        <ColumnHeader key={m.key} metricKey={m.key} label={m.label} />
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {currentData.map((row, idx) => {
                       const canDrill = (viewLevel === 'campaigns' || viewLevel === 'adsets');
+                      const isAdsLevel = viewLevel === 'ads';
+                      const hasPreview = isAdsLevel && row.creative_thumbnail;
                       return (
                         <tr
                           key={row.id || idx}
@@ -454,21 +585,36 @@ export default function AdsPage({ params }) {
                             if (viewLevel === 'campaigns') drillIntoCampaign(row);
                             else if (viewLevel === 'adsets') drillIntoAdset(row);
                           }}
-                          className={`border-b border-ease-border/30 transition-colors ${
-                            canDrill ? 'cursor-pointer hover:bg-ease-accent/[0.04]' : 'hover:bg-white/[0.02]'
-                          } ${idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
+                          onMouseEnter={() => isAdsLevel && setHoveredAd(row.id)}
+                          onMouseLeave={() => isAdsLevel && setHoveredAd(null)}
+                          className={`border-b border-white/[0.03] table-row-hover ${
+                            canDrill ? 'cursor-pointer' : ''
+                          }`}
+                          style={{ animationDelay: `${idx * 30}ms` }}
                         >
                           {viewLevel === 'campaigns' && (
-                            <td className="px-3 py-2.5"><StatusDot status={row.status} /></td>
+                            <td className="px-3 py-3"><StatusDot status={row.status} /></td>
                           )}
-                          <td className="px-3 py-2.5 text-ease-cream font-medium truncate max-w-[220px] sticky left-0 bg-ease-card z-10">
-                            <span className="flex items-center gap-1.5">
-                              {row.name}
-                              {canDrill && <span className="text-gray-600 text-[10px]">&rsaquo;</span>}
+                          <td className="px-3 py-3 font-medium truncate max-w-[220px] sticky left-0 bg-[#151515] z-10 relative">
+                            <span className="flex items-center gap-2">
+                              {/* Ad thumbnail preview */}
+                              {isAdsLevel && row.creative_thumbnail && (
+                                <img
+                                  src={row.creative_thumbnail}
+                                  alt=""
+                                  className="w-7 h-7 rounded object-cover shrink-0 border border-white/[0.06]"
+                                />
+                              )}
+                              <span className="truncate">{row.name}</span>
+                              {canDrill && <span className="text-white/15 text-[10px] shrink-0">&#8250;</span>}
                             </span>
+                            {/* Hover preview */}
+                            {hasPreview && hoveredAd === row.id && (
+                              <AdPreview thumbnail={row.creative_thumbnail} type={row.creative_type} />
+                            )}
                           </td>
                           {activeMetrics.map((m) => (
-                            <td key={m.key} className="text-right px-2.5 py-2.5 whitespace-nowrap">
+                            <td key={m.key} className="text-right px-2.5 py-3 whitespace-nowrap">
                               <MetricCell value={row[m.key]} metricKey={m.key} format={m.format} />
                             </td>
                           ))}
@@ -480,20 +626,20 @@ export default function AdsPage({ params }) {
               </div>
             </div>
           ) : (
-            <div className="bg-ease-card border border-ease-border rounded-xl p-8 text-center">
-              <p className="text-gray-500 text-sm">Keine Daten fuer diesen Zeitraum.</p>
+            <div className="glass rounded-2xl p-10 text-center">
+              <p className="text-ease-muted text-sm">Keine Daten für diesen Zeitraum.</p>
             </div>
           )}
 
           {/* Benchmark Legend */}
-          <div className="mt-4 flex items-center gap-4 text-[10px] text-gray-600">
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500" /> Gut</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-yellow-500" /> OK</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" /> Schlecht</span>
-            <span className="text-gray-700">|</span>
-            <span>Benchmark-Farben basierend auf E-Commerce DACH Standards</span>
+          <div className="mt-5 flex items-center gap-5 text-[10px] text-white/25">
+            <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-ease-green" /> Gut</span>
+            <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400" /> OK</span>
+            <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-ease-red" /> Schwach</span>
+            <span className="text-white/10">|</span>
+            <span>E-Commerce DACH Benchmarks</span>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

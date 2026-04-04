@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }) {
         {/* Client/Project Selector - only for admins */}
         {isAdmin && userProjects.length > 0 && (
           <div className="px-3 py-3 border-b border-ease-border">
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 px-3 mb-2">Kunden</p>
+            <p className="text-[10px] uppercase tracking-wider text-ease-muted px-3 mb-2">Kunden</p>
             {userProjects.map((project) => (
               <Link
                 key={project.slug}
@@ -66,7 +66,7 @@ export default function DashboardLayout({ children }) {
         {/* Client view - just show their project name */}
         {isClient && activeProject && (
           <div className="px-3 py-3 border-b border-ease-border">
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 px-3 mb-2">Projekt</p>
+            <p className="text-[10px] uppercase tracking-wider text-ease-muted px-3 mb-2">Projekt</p>
             <div className="flex items-center gap-2.5 px-3 py-2 text-sm text-ease-accent font-medium">
               <div className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold bg-ease-accent text-black">
                 {activeProject.name.charAt(0).toUpperCase()}
@@ -92,7 +92,7 @@ export default function DashboardLayout({ children }) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-ease-cream truncate">{user.email}</p>
-                  <p className="text-[10px] text-gray-600">
+                  <p className="text-[10px] text-ease-muted">
                     {isAdmin ? 'Admin' : 'Kunde'}
                   </p>
                 </div>
@@ -118,9 +118,9 @@ export default function DashboardLayout({ children }) {
 
 const NAV_SECTIONS = [
   {
-    label: 'Kanaele',
+    label: 'Kanäle',
     items: [
-      { segment: '', label: 'Uebersicht', icon: '\u229E' },
+      { segment: '', label: 'Übersicht', icon: '\u229E' },
       { segment: '/quiz', label: 'Quiz', icon: '\u2726' },
       { segment: '/meta', label: 'Meta Ads', icon: '\u25CE' },
       { segment: '/google', label: 'Google Ads', icon: '\u25C9' },
@@ -161,7 +161,7 @@ function ClientNav({ projectSlug, pathname }) {
     <nav className="px-3 py-3 flex flex-col gap-0.5">
       {NAV_SECTIONS.map((section) => (
         <div key={section.label} className="mb-2">
-          <p className="text-[10px] uppercase tracking-wider text-gray-600 px-3 mb-2">
+          <p className="text-[10px] uppercase tracking-wider text-ease-muted px-3 mb-2">
             {section.label}
           </p>
           {section.items.map((item) => (

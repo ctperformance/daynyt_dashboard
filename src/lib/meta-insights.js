@@ -7,6 +7,7 @@ export const INSIGHT_FIELDS = [
   'spend', 'impressions', 'clicks', 'reach', 'inline_link_clicks',
   'actions', 'action_values',
   'cpc', 'cpm', 'ctr', 'frequency',
+  'video_play_actions',
   'video_thruplay_actions',
   'video_p25_watched_actions', 'video_p50_watched_actions',
   'video_p75_watched_actions', 'video_p100_watched_actions',
@@ -32,6 +33,7 @@ export function parseInsightsRow(row) {
   const purchases = getAction(row.actions, 'purchase');
   const revenue = getActionValue(row.action_values, 'purchase');
 
+  const video3s = parseInt(row.video_play_actions?.[0]?.value || '0', 10);
   const thruplay = parseInt(row.video_thruplay_actions?.[0]?.value || '0', 10);
   const videoP25 = parseInt(row.video_p25_watched_actions?.[0]?.value || '0', 10);
   const videoP50 = parseInt(row.video_p50_watched_actions?.[0]?.value || '0', 10);
@@ -52,8 +54,8 @@ export function parseInsightsRow(row) {
   const atcRate = lpViews > 0 ? (atc / lpViews * 100) : 0;
   const checkoutRate = atc > 0 ? (checkoutInitiated / atc * 100) : 0;
 
-  const hookRate = impressions > 0 ? (thruplay / impressions * 100) : 0;
-  const holdRate = thruplay > 0 && videoP25 > 0 ? (thruplay / videoP25 * 100) : 0;
+  const hookRate = impressions > 0 ? (video3s / impressions * 100) : 0;
+  const holdRate = video3s > 0 ? (thruplay / video3s * 100) : 0;
   const videoViewRate25 = impressions > 0 ? (videoP25 / impressions * 100) : 0;
   const videoViewRate50 = impressions > 0 ? (videoP50 / impressions * 100) : 0;
   const videoViewRate100 = impressions > 0 ? (videoP100 / impressions * 100) : 0;
@@ -73,7 +75,7 @@ export function parseInsightsRow(row) {
     video_view_rate_25: +videoViewRate25.toFixed(1),
     video_view_rate_50: +videoViewRate50.toFixed(1),
     video_view_rate_100: +videoViewRate100.toFixed(1),
-    thruplay, video_p25: videoP25, video_p50: videoP50, video_p75: videoP75, video_p100: videoP100,
+    thruplay, video_3s: video3s, video_p25: videoP25, video_p50: videoP50, video_p75: videoP75, video_p100: videoP100,
   };
 }
 
@@ -90,13 +92,14 @@ export function aggregateTotals(rows) {
     purchases: acc.purchases + c.purchases,
     revenue: acc.revenue + c.revenue,
     thruplay: acc.thruplay + c.thruplay,
+    video_3s: acc.video_3s + c.video_3s,
     video_p25: acc.video_p25 + c.video_p25,
     video_p50: acc.video_p50 + c.video_p50,
     video_p100: acc.video_p100 + c.video_p100,
   }), {
     spend: 0, impressions: 0, clicks: 0, reach: 0, link_clicks: 0,
     lp_views: 0, atc: 0, checkout_initiated: 0, purchases: 0, revenue: 0,
-    thruplay: 0, video_p25: 0, video_p50: 0, video_p100: 0,
+    thruplay: 0, video_3s: 0, video_p25: 0, video_p50: 0, video_p100: 0,
   });
 
   totals.ctr = totals.impressions > 0 ? +(totals.link_clicks / totals.impressions * 100).toFixed(2) : 0;

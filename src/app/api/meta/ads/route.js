@@ -76,8 +76,38 @@ export async function GET(request) {
 
     const totals = aggregateTotals(ads);
 
+    // Fetch creative thumbnails for all ads
+    const adIds = ads.map(a => a.id).filter(Boolean);
+    let creativeMap = {};
+    if (adIds.length > 0) {
+      try {
+        const creativeUrl = `https://graph.facebook.com/v21.0/?ids=${adIds.join(',')}&fields=creative{thumbnail_url,image_url,object_type}&access_token=${access_token}`;
+        const creativeRes = await fetch(creativeUrl);
+        if (creativeRes.ok) {
+          const creativeData = await creativeRes.json();
+          for (const [adId, adData] of Object.entries(creativeData)) {
+            const creative = adData.creative || {};
+            creativeMap[adId] = {
+              thumbnail_url: creative.thumbnail_url || creative.image_url || null,
+              type: creative.object_type || null, // VIDEO, IMAGE, etc.
+            };
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch creative thumbnails:', e);
+        // Non-fatal - continue without thumbnails
+      }
+    }
+
+    // Merge creative data into ads
+    const adsWithCreatives = ads.map(ad => ({
+      ...ad,
+      creative_thumbnail: creativeMap[ad.id]?.thumbnail_url || null,
+      creative_type: creativeMap[ad.id]?.type || null,
+    }));
+
     return NextResponse.json({
-      ads,
+      ads: adsWithCreatives,
       totals,
       adset: { id: adsetId, name: ads[0]?.adset_name || '' },
       campaign: { id: ads[0]?.campaign_id || '', name: ads[0]?.campaign_name || '' },

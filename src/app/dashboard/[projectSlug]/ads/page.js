@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback, useRef, use } from 'react';
+import useSWR from 'swr';
 import { useAuth } from '@/components/AuthProvider';
 import KpiCard from '@/components/KpiCard';
 import { evaluateMetric, BENCHMARKS } from '@/lib/meta-benchmarks';
+import { fetcher, swrLiveOptions, swrStaticOptions } from '@/lib/fetcher';
 
 const DATE_RANGES = [
   { key: 'today', label: 'Heute', days: 0 },
@@ -286,14 +288,11 @@ export default function AdsPage({ params }) {
   const [dateRange, setDateRange] = useState('30d');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
-  const [campaigns, setCampaigns] = useState(null);
   const [adsets, setAdsets] = useState(null);
   const [ads, setAds] = useState(null);
-  const [connectedPlatforms, setConnectedPlatforms] = useState({});
   const [clarityData, setClarityData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [drillLoading, setDrillLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [fetchedAt, setFetchedAt] = useState(null);
 
   const { activeSections, toggleSection, activeMetrics } = useMetricSections();
 
@@ -304,82 +303,74 @@ export default function AdsPage({ params }) {
     ? `from=${customFrom}&to=${customTo}`
     : `days=${days}`;
 
-  // Check connected platforms
-  useEffect(() => {
-    if (!projectId) return;
-    fetch(`/api/integrations/status?project_id=${projectId}`)
-      .then(r => r.ok ? r.json() : {})
-      .then(data => {
-        setConnectedPlatforms({
-          meta: data.meta?.connected || false,
-          google: data.google?.connected || false,
-        });
-      })
-      .catch(() => {});
-  }, [projectId]);
+  // SWR cached integration status — rarely changes
+  const { data: statusData } = useSWR(
+    projectId ? `/api/integrations/status?project_id=${projectId}` : null,
+    fetcher,
+    swrStaticOptions,
+  );
+  const connectedPlatforms = {
+    meta: statusData?.meta?.connected || false,
+    google: statusData?.google?.connected || false,
+  };
 
-  // Fetch campaigns
-  const fetchCampaigns = useCallback(async () => {
-    if (!projectId || !connectedPlatforms.meta) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/meta/campaigns?project_id=${projectId}&${dateParams}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCampaigns((data.campaigns || []).map(c => ({ ...c, provider: 'meta' })));
-        setFetchedAt(data.fetched_at);
-        // Also fetch clarity data
-        fetch(`/api/clarity/per-ad?project_id=${projectId}&${dateParams}`)
-          .then(r => r.ok ? r.json() : null)
-          .then(data => setClarityData(data?.data || null))
-          .catch(() => {});
-      } else {
-        const err = await res.json().catch(() => ({}));
-        if (err.token_expired) {
-          setError('Meta Token abgelaufen — bitte neu verbinden unter Einstellungen.');
-        } else {
-          setError(err.detail || err.error || 'Fehler beim Laden');
-        }
-      }
-    } catch { setError('Netzwerkfehler'); }
-    setLoading(false);
-  }, [projectId, connectedPlatforms.meta, dateParams]);
+  // SWR cached campaigns — shows stale data instantly
+  const { data: campaignData, error: campaignError, isLoading: campaignsLoading, mutate: mutateCampaigns } = useSWR(
+    connectedPlatforms.meta && projectId
+      ? `/api/meta/campaigns?project_id=${projectId}&${dateParams}`
+      : null,
+    fetcher,
+    swrLiveOptions,
+  );
+  const campaigns = campaignData ? (campaignData.campaigns || []).map(c => ({ ...c, provider: 'meta' })) : null;
+  const fetchedAt = campaignData?.fetched_at || null;
 
-  useEffect(() => {
-    if (connectedPlatforms.meta) fetchCampaigns();
-  }, [connectedPlatforms.meta, fetchCampaigns]);
+  // SWR cached clarity data
+  const { data: clarityRaw } = useSWR(
+    connectedPlatforms.meta && projectId
+      ? `/api/clarity/per-ad?project_id=${projectId}&${dateParams}`
+      : null,
+    fetcher,
+    { ...swrLiveOptions, dedupingInterval: 120000 },
+  );
+  const cachedClarityData = clarityRaw?.data || clarityData;
 
-  // Fetch adsets
+  // Sync campaign errors
+  const campaignErrorMsg = campaignError?.info?.token_expired
+    ? 'Meta Token abgelaufen — bitte neu verbinden unter Einstellungen.'
+    : campaignError?.info?.detail || campaignError?.info?.error || null;
+
+  const loading = campaignsLoading && !campaignData;
+  const displayError = error || campaignErrorMsg;
+
+  // Fetch adsets (drill-down, not SWR because depends on selected campaign)
   const fetchAdsets = useCallback(async (campaign) => {
     if (!projectId) return;
-    setLoading(true);
+    setDrillLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/meta/adsets?project_id=${projectId}&campaign_id=${campaign.id}&${dateParams}`);
       if (res.ok) {
         const data = await res.json();
         setAdsets((data.adsets || []).map(a => ({ ...a, provider: 'meta' })));
-        setFetchedAt(data.fetched_at);
       } else { setError('Fehler beim Laden der Anzeigengruppen'); }
     } catch { setError('Netzwerkfehler'); }
-    setLoading(false);
+    setDrillLoading(false);
   }, [projectId, dateParams]);
 
-  // Fetch ads
+  // Fetch ads (drill-down)
   const fetchAds = useCallback(async (adset) => {
     if (!projectId) return;
-    setLoading(true);
+    setDrillLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/meta/ads?project_id=${projectId}&adset_id=${adset.id}&${dateParams}`);
       if (res.ok) {
         const data = await res.json();
         setAds((data.ads || []).map(a => ({ ...a, provider: 'meta' })));
-        setFetchedAt(data.fetched_at);
       } else { setError('Fehler beim Laden der Anzeigen'); }
     } catch { setError('Netzwerkfehler'); }
-    setLoading(false);
+    setDrillLoading(false);
   }, [projectId, dateParams]);
 
   // Re-fetch on date change at drill level
@@ -413,12 +404,13 @@ export default function AdsPage({ params }) {
     if (selectedCampaign) fetchAdsets(selectedCampaign);
   }
   function handleRefresh() {
-    if (viewLevel === 'campaigns') fetchCampaigns();
+    if (viewLevel === 'campaigns') mutateCampaigns();
     else if (viewLevel === 'adsets' && selectedCampaign) fetchAdsets(selectedCampaign);
     else if (viewLevel === 'ads' && selectedAdset) fetchAds(selectedAdset);
   }
 
   const currentData = viewLevel === 'campaigns' ? campaigns : viewLevel === 'adsets' ? adsets : ads;
+  const isAnyLoading = loading || drillLoading;
   const hasAnyConnection = connectedPlatforms.meta;
   const levelLabels = { campaigns: 'Kampagnen', adsets: 'Anzeigengruppen', ads: 'Anzeigen' };
 
@@ -451,11 +443,11 @@ export default function AdsPage({ params }) {
         <div className="flex items-center gap-3">
           <button
             onClick={handleRefresh}
-            disabled={loading}
+            disabled={isAnyLoading}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg text-ease-muted hover:text-white hover:bg-white/[0.04] transition-all disabled:opacity-40"
             title="Daten aktualisieren"
           >
-            <span className={`text-sm ${loading ? 'animate-spin' : ''}`}>&#8635;</span>
+            <span className={`text-sm ${isAnyLoading ? 'animate-spin' : ''}`}>&#8635;</span>
             Aktualisieren
           </button>
           {fetchedAt && (
@@ -519,7 +511,7 @@ export default function AdsPage({ params }) {
       </div>
 
       {/* Not connected */}
-      {!loading && !hasAnyConnection && (
+      {!isAnyLoading && !hasAnyConnection && statusData && (
         <div className="glass rounded-2xl p-16 text-center animate-fade-in">
           <div className="w-12 h-12 rounded-xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
             <span className="text-xl text-ease-muted">&#9678;</span>
@@ -533,7 +525,7 @@ export default function AdsPage({ params }) {
       )}
 
       {/* Loading skeleton */}
-      {loading && hasAnyConnection && (
+      {isAnyLoading && hasAnyConnection && !currentData && (
         <div className="animate-fade-in">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {[1,2,3,4].map(i => (
@@ -548,14 +540,14 @@ export default function AdsPage({ params }) {
       )}
 
       {/* Error */}
-      {error && (
+      {displayError && (
         <div className="bg-ease-red/5 border border-ease-red/20 text-ease-red text-sm px-4 py-3 rounded-xl mb-6 animate-fade-in">
-          {error}
+          {displayError}
         </div>
       )}
 
       {/* Content */}
-      {!loading && hasAnyConnection && currentData && (
+      {hasAnyConnection && currentData && (
         <div className="animate-fade-in">
           {/* Drill-down breadcrumb */}
           {viewLevel !== 'campaigns' && (
@@ -680,7 +672,7 @@ export default function AdsPage({ params }) {
           )}
 
           {/* Clarity Website Quality */}
-          {clarityData && clarityData.length > 0 && (
+          {cachedClarityData && cachedClarityData.length > 0 && (
             <div className="mt-6 glass rounded-2xl overflow-hidden animate-fade-in">
               <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Website-Qualität (Clarity)</h3>
@@ -700,7 +692,7 @@ export default function AdsPage({ params }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {clarityData.map((row, i) => (
+                    {cachedClarityData.map((row, i) => (
                       <tr key={i} className="border-b border-white/[0.03] table-row-hover">
                         <td className="px-4 py-3 font-medium truncate max-w-[220px]">
                           {row.campaign}{row.adset ? ` \u2192 ${row.adset}` : ''}

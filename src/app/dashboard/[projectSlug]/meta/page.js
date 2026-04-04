@@ -1,68 +1,44 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, use } from 'react';
+import { useState, use } from 'react';
+import useSWR from 'swr';
 import KpiCard from '@/components/KpiCard';
 import ConnectPrompt from '@/components/ConnectPrompt';
 import { useAuth } from '@/components/AuthProvider';
+import { fetcher, swrLiveOptions, swrStaticOptions } from '@/lib/fetcher';
 
 export default function MetaPage({ params }) {
   const { projectSlug } = use(params);
   const { userProjects } = useAuth();
-  const [connected, setConnected] = useState(null);
-  const [campaigns, setCampaigns] = useState(null);
-  const [totals, setTotals] = useState(null);
-  const [account, setAccount] = useState(null);
-  const [error, setError] = useState(null);
   const [days, setDays] = useState(30);
 
   const project = userProjects.find((p) => p.slug === projectSlug);
   const projectName = project?.name || projectSlug.toUpperCase();
   const projectId = project?.id;
 
-  useEffect(() => {
-    if (!projectId) return;
-    async function checkStatus() {
-      try {
-        const res = await fetch(`/api/integrations/status?project_id=${projectId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setConnected(data.meta?.connected || false);
-        } else {
-          setConnected(false);
-        }
-      } catch {
-        setConnected(false);
-      }
-    }
-    checkStatus();
-  }, [projectId]);
+  // Cached integration status — rarely changes, long cache
+  const { data: statusData } = useSWR(
+    projectId ? `/api/integrations/status?project_id=${projectId}` : null,
+    fetcher,
+    swrStaticOptions,
+  );
+  const connected = statusData?.meta?.connected ?? null;
 
-  useEffect(() => {
-    if (!connected || !projectId) return;
-    async function fetchCampaigns() {
-      try {
-        const res = await fetch(`/api/meta/campaigns?project_id=${projectId}&days=${days}`);
-        if (res.ok) {
-          const data = await res.json();
-          setCampaigns(data.campaigns || []);
-          setTotals(data.totals || {});
-          setAccount(data.account || {});
-        } else if (res.status === 401) {
-          const errData = await res.json().catch(() => ({}));
-          setError(errData.token_expired ? 'Meta Token abgelaufen — bitte neu verbinden unter Einstellungen.' : 'Authentifizierungsfehler');
-        } else if (res.status === 404) {
-          setConnected(false);
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          setError(errData.detail || errData.error || 'Fehler beim Laden der Kampagnendaten.');
-        }
-      } catch {
-        setError('Netzwerkfehler beim Laden der Daten.');
-      }
-    }
-    fetchCampaigns();
-  }, [connected, days, projectId]);
+  // Cached campaign data — shows stale data instantly, revalidates in background
+  const { data: campaignData, error: campaignError, isLoading, mutate } = useSWR(
+    connected && projectId ? `/api/meta/campaigns?project_id=${projectId}&days=${days}` : null,
+    fetcher,
+    swrLiveOptions,
+  );
+
+  const campaigns = campaignData?.campaigns || null;
+  const totals = campaignData?.totals || null;
+  const account = campaignData?.account || null;
+
+  const error = campaignError?.info?.token_expired
+    ? 'Meta Token abgelaufen — bitte neu verbinden unter Einstellungen.'
+    : campaignError?.info?.detail || campaignError?.info?.error || (campaignError ? 'Fehler beim Laden der Kampagnendaten.' : null);
 
   return (
     <div className="px-8 py-8 max-w-6xl">
@@ -82,20 +58,28 @@ export default function MetaPage({ params }) {
           )}
         </div>
         {connected && (
-          <div className="flex items-center gap-1">
-            {[7, 14, 30, 90].map((d) => (
-              <button
-                key={d}
-                onClick={() => setDays(d)}
-                className={`text-xs px-3 py-1.5 rounded-lg transition-all ${
-                  days === d
-                    ? 'bg-white/10 text-white font-medium'
-                    : 'text-ease-muted hover:text-white hover:bg-white/[0.04]'
-                }`}
-              >
-                {d}T
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => mutate()}
+              className="text-xs text-ease-muted hover:text-white transition-colors"
+            >
+              {'\u21BB'} Aktualisieren
+            </button>
+            <div className="flex items-center gap-1">
+              {[7, 14, 30, 90].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDays(d)}
+                  className={`text-xs px-3 py-1.5 rounded-lg transition-all ${
+                    days === d
+                      ? 'bg-white/10 text-white font-medium'
+                      : 'text-ease-muted hover:text-white hover:bg-white/[0.04]'
+                  }`}
+                >
+                  {d}T
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -115,7 +99,7 @@ export default function MetaPage({ params }) {
           features={[
             'Kampagnen-Übersicht mit Spend, Impressionen & Klicks',
             'ROAS & CPA Tracking über Zeit',
-            'Conversion-Funnel (View → Click → Purchase)',
+            'Conversion-Funnel (View \u2192 Click \u2192 Purchase)',
             'Audience Insights & Demographics',
           ]}
           projectId={projectId}
@@ -127,6 +111,30 @@ export default function MetaPage({ params }) {
         <>
           {error && (
             <div className="bg-ease-red/5 border border-ease-red/20 text-ease-red text-sm px-4 py-3 rounded-xl mb-6 animate-fade-in">{error}</div>
+          )}
+
+          {/* Loading skeleton — only when no cached data */}
+          {isLoading && !campaignData && (
+            <div className="animate-fade-in">
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+                {[1,2,3,4,5,6].map(i => (
+                  <div key={i} className="glass rounded-2xl p-5 space-y-3">
+                    <div className="skeleton h-3 w-16 rounded" />
+                    <div className="skeleton h-6 w-20 rounded" />
+                  </div>
+                ))}
+              </div>
+              <div className="glass rounded-2xl p-6">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="flex gap-4 py-3 border-b border-white/[0.03]">
+                    <div className="skeleton h-4 w-40 rounded" />
+                    <div className="skeleton h-4 w-16 rounded ml-auto" />
+                    <div className="skeleton h-4 w-16 rounded" />
+                    <div className="skeleton h-4 w-16 rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {totals && (
@@ -186,7 +194,7 @@ export default function MetaPage({ params }) {
             </div>
           )}
 
-          {!campaigns && !error && (
+          {!campaigns && !error && !isLoading && (
             <div className="text-center py-12 animate-fade-in">
               <div className="text-ease-muted text-sm">Kampagnendaten werden geladen...</div>
             </div>

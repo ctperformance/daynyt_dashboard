@@ -3,7 +3,6 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { subDays } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
 
 // GET /api/dashboard-stats?project_id=...&days=30
 export async function GET(request) {

@@ -1,6 +1,7 @@
 import './globals.css';
 import { Outfit } from 'next/font/google';
 import { AuthProvider } from '@/components/AuthProvider';
+import SWRProvider from '@/components/SWRProvider';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -18,7 +19,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="de" className={outfit.variable}>
       <body className="font-sans antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <SWRProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </SWRProvider>
       </body>
     </html>
   );

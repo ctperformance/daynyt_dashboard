@@ -3,7 +3,6 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { INSIGHT_FIELDS, parseInsightsRow, aggregateTotals } from '@/lib/meta-insights';
 
 export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
 
 export async function GET(request) {
   try {
@@ -98,7 +97,7 @@ export async function GET(request) {
 
     const totals = aggregateTotals(campaigns);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       campaigns,
       totals,
       period: { since: sinceStr, until: untilStr, days },
@@ -109,6 +108,9 @@ export async function GET(request) {
         currency: provider_metadata?.currency || 'EUR',
       },
     });
+    // Cache for 60s, stale-while-revalidate for 5 min
+    response.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+    return response;
   } catch (error) {
     console.error('Meta campaigns error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

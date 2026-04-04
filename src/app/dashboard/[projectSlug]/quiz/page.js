@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect, use } from 'react';
+import { useState, useMemo, use } from 'react';
+import useSWR from 'swr';
 import Link from 'next/link';
 import KpiCard from '@/components/KpiCard';
 import FunnelChart from '@/components/FunnelChart';
@@ -16,51 +17,42 @@ import {
   topWishes,
 } from '@/lib/demo-data';
 import { useAuth } from '@/components/AuthProvider';
+import { fetcher, swrLiveOptions } from '@/lib/fetcher';
 
 export default function QuizPage({ params }) {
   const { projectSlug } = use(params);
   const { userProjects } = useAuth();
   const [days, setDays] = useState(30);
-  const [liveData, setLiveData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [hasData, setHasData] = useState(false);
 
   const project = userProjects.find((p) => p.slug === projectSlug);
   const projectName = project?.name || projectSlug.toUpperCase();
+  const projectId = project?.id;
 
-  useEffect(() => {
-    if (!project) return;
+  // SWR cached fetch — data persists across navigations
+  const { data: liveData, error, isLoading } = useSWR(
+    projectId ? `/api/dashboard-stats?project_id=${projectId}&days=${days}` : null,
+    fetcher,
+    swrLiveOptions,
+  );
 
-    setLoading(true);
-    fetch(`/api/dashboard-stats?project_id=${project.id}&days=${days}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.submissions && data.submissions.length > 0) {
-          setLiveData(data);
-          setHasData(true);
-        } else {
-          setLiveData(null);
-          setHasData(false);
-        }
-      })
-      .catch(() => {
-        setLiveData(null);
-        setHasData(false);
-      })
-      .finally(() => setLoading(false));
-  }, [project, days]);
+  const hasData = liveData?.submissions?.length > 0;
+
+  // Breadcrumb component
+  const breadcrumb = (
+    <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
+      <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
+      <span className="text-white/20">/</span>
+      <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
+      <span className="text-white/20">/</span>
+      <span className="text-white font-medium">Quiz</span>
+    </div>
+  );
 
   // Loading state
-  if (loading) {
+  if (isLoading && !liveData) {
     return (
       <div className="px-8 py-8 max-w-7xl">
-        <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
-          <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
-          <span className="text-white/20">/</span>
-          <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
-          <span className="text-white/20">/</span>
-          <span className="text-white font-medium">Quiz</span>
-        </div>
+        {breadcrumb}
         <h1 className="text-2xl font-bold tracking-tight mb-8 animate-fade-in">Nervensystem-Quiz</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[1, 2, 3, 4].map(i => (
@@ -78,34 +70,34 @@ export default function QuizPage({ params }) {
     );
   }
 
-  // Empty state
+  // Empty state — Quiz is always "connected" (webhook), just no data yet
   if (!hasData) {
     return (
       <div className="px-8 py-8 max-w-7xl">
-        <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
-          <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
-          <span className="text-white/20">/</span>
-          <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
-          <span className="text-white/20">/</span>
-          <span className="text-white font-medium">Quiz</span>
-        </div>
-
+        {breadcrumb}
         <h1 className="text-2xl font-bold tracking-tight mb-8 animate-fade-in">Nervensystem-Quiz</h1>
 
         <div className="glass rounded-2xl p-16 text-center max-w-lg mx-auto animate-fade-in">
           <div className="w-14 h-14 rounded-xl bg-white/[0.04] flex items-center justify-center text-2xl mx-auto mb-4">
             {'\u2726'}
           </div>
-          <h2 className="text-base font-semibold mb-2">Noch keine Quiz-Daten vorhanden</h2>
-          <p className="text-sm text-ease-muted mb-6">
-            Verbinde dein Quiz über die Einstellungen, um Abschlüsse, Funnel-Daten und Stress-Analysen zu sehen.
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full bg-ease-green" />
+            <span className="text-xs text-ease-green font-medium">Quiz verbunden</span>
+          </div>
+          <h2 className="text-base font-semibold mb-2">Noch keine Quiz-Daten eingegangen</h2>
+          <p className="text-sm text-ease-muted mb-4">
+            Dein Quiz-Webhook ist aktiv. Sobald die ersten Nutzer das Quiz abschließen, erscheinen hier Abschlüsse, Funnel-Daten und Stress-Analysen.
           </p>
-          <Link
-            href={`/dashboard/${projectSlug}/settings`}
-            className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white font-medium text-xs px-5 py-2.5 rounded-lg transition-all"
-          >
-            Einstellungen öffnen
-          </Link>
+          <div className="glass rounded-xl p-4 text-left text-xs text-ease-muted space-y-2">
+            <p className="text-white/40 font-medium uppercase text-[10px]">Webhook-Endpunkt</p>
+            <code className="block text-[11px] text-white/50 bg-white/[0.03] rounded-lg px-3 py-2 break-all">
+              {typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/quiz
+            </code>
+            <p className="text-white/30 mt-2">
+              Sende Quiz-Daten als POST an diesen Endpunkt mit dem passenden Webhook-Secret.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -137,14 +129,7 @@ export default function QuizPage({ params }) {
 
   return (
     <div className="px-8 py-8 max-w-7xl">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
-        <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
-        <span className="text-white/20">/</span>
-        <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
-        <span className="text-white/20">/</span>
-        <span className="text-white font-medium">Quiz</span>
-      </div>
+      {breadcrumb}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8 animate-fade-in">

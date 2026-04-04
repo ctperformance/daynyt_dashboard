@@ -18,13 +18,28 @@ export async function GET(request) {
     // Parse state to get project info
     let stateData = {};
     let projectSlug = 'ease';
-    let projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
+    let projectId = null;
     try {
       stateData = JSON.parse(Buffer.from(state || '', 'base64url').toString());
       projectSlug = stateData.project_slug || projectSlug;
-      projectId = stateData.project_id || projectId;
+      projectId = stateData.project_id || null;
     } catch {
-      // Fallback to defaults if state parsing fails
+      // Fallback: look up project by slug
+    }
+
+    // If no project_id from state, look it up by slug
+    if (!projectId) {
+      const supabaseLookup = createServiceClient();
+      const { data: proj } = await supabaseLookup
+        .from('projects')
+        .select('id')
+        .eq('slug', projectSlug)
+        .single();
+      projectId = proj?.id;
+    }
+
+    if (!projectId) {
+      return NextResponse.redirect(`${baseUrl}/dashboard/${projectSlug}/settings?error=meta_no_project`);
     }
 
     const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/settings`;

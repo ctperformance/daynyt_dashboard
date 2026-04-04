@@ -2,8 +2,8 @@
 
 /**
  * Opens an OAuth flow in a centered popup window.
- * After the OAuth callback redirects to /dashboard/ease/settings?connected=...,
- * the popup detects this and notifies the opener window.
+ * The callback page sends a postMessage back and closes itself.
+ * Falls back to same-window redirect if popup is blocked.
  */
 export function openOAuthPopup(url, { onSuccess, onError } = {}) {
   const width = 600;
@@ -23,34 +23,31 @@ export function openOAuthPopup(url, { onSuccess, onError } = {}) {
     return;
   }
 
-  // Poll to detect when popup navigates back to our domain
-  const pollTimer = setInterval(() => {
-    try {
-      if (!popup || popup.closed) {
-        clearInterval(pollTimer);
-        return;
-      }
+  // Listen for postMessage from the callback page
+  function handleMessage(event) {
+    if (event.origin !== window.location.origin) return;
+    const data = event.data;
+    if (!data || data.type !== 'oauth_callback') return;
 
-      // Check if popup has navigated back to our settings page
-      if (popup.location.href && popup.location.origin === window.location.origin) {
-        const popupUrl = new URL(popup.location.href);
-        const connected = popupUrl.searchParams.get('connected');
-        const error = popupUrl.searchParams.get('error');
+    window.removeEventListener('message', handleMessage);
+    clearInterval(closedTimer);
 
-        if (connected) {
-          popup.close();
-          clearInterval(pollTimer);
-          onSuccess?.(connected);
-        } else if (error) {
-          popup.close();
-          clearInterval(pollTimer);
-          onError?.(error);
-        }
-      }
-    } catch {
-      // Cross-origin — popup is still on external OAuth page, keep polling
+    if (data.status === 'connected') {
+      onSuccess?.(data.value || data.provider);
+    } else if (data.status === 'error') {
+      onError?.(data.value || 'unknown_error');
     }
-  }, 500);
+  }
+
+  window.addEventListener('message', handleMessage);
+
+  // Also detect if user manually closes the popup
+  const closedTimer = setInterval(() => {
+    if (!popup || popup.closed) {
+      clearInterval(closedTimer);
+      window.removeEventListener('message', handleMessage);
+    }
+  }, 1000);
 
   return popup;
 }

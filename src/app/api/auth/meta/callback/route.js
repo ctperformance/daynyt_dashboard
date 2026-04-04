@@ -142,41 +142,14 @@ export async function GET(request) {
 
     if (dbError) {
       console.error('Failed to store Meta token:', dbError);
-      return popupResponse('meta', 'error', 'meta_db_error', settingsUrl);
+      return NextResponse.redirect(`${baseUrl}/auth/oauth-complete?provider=meta&error=meta_db_error`);
     }
 
     // If multiple accounts and none selected, prompt selection
-    if (!selectedAccountId && adAccounts.length > 1) {
-      return popupResponse('meta', 'connected', 'meta', `${settingsUrl}?connected=meta&select_account=meta`);
-    }
-
-    return popupResponse('meta', 'connected', 'meta', `${settingsUrl}?connected=meta`);
+    const selectParam = (!selectedAccountId && adAccounts.length > 1) ? '&select=true' : '';
+    return NextResponse.redirect(`${baseUrl}/auth/oauth-complete?provider=meta&status=connected${selectParam}`);
   } catch (error) {
     console.error('Meta OAuth callback error:', error);
-    return popupResponse('meta', 'error', 'meta_callback_failed', `${baseUrl}/dashboard/ease/settings?error=meta_callback_failed`);
+    return NextResponse.redirect(`${baseUrl}/auth/oauth-complete?provider=meta&error=meta_callback_failed`);
   }
-}
-
-/**
- * Returns an HTML page that notifies the parent window (if popup) and closes,
- * or redirects if opened in the same window.
- */
-function popupResponse(provider, type, value, fallbackUrl) {
-  const html = `<!DOCTYPE html><html><head><title>Verbinde...</title></head><body>
-<script>
-  (function() {
-    if (window.opener) {
-      window.opener.postMessage({ type: 'oauth_callback', provider: '${provider}', status: '${type}', value: '${value}' }, '*');
-      window.close();
-    } else {
-      window.location.href = '${fallbackUrl}';
-    }
-  })();
-</script>
-<p>Weiterleitung...</p>
-</body></html>`;
-
-  return new Response(html, {
-    headers: { 'Content-Type': 'text/html' },
-  });
 }

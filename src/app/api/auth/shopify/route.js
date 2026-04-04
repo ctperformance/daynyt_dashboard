@@ -7,14 +7,16 @@ export const fetchCache = 'force-no-store';
 
 export async function GET(request) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const settingsUrl = `${baseUrl}/dashboard/ease/settings`;
+  const { searchParams } = new URL(request.url);
+  const projectSlug = searchParams.get('project_slug') || 'ease';
+  const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/settings`;
 
   try {
     const customInstallUrl = process.env.SHOPIFY_INSTALL_URL;
 
     // Custom Distribution: redirect directly to the install link
     if (customInstallUrl) {
-      // Set a cookie so we know this is a Custom Distribution flow
+      // Set cookies so we know this is a Custom Distribution flow
       const cookieStore = await cookies();
       cookieStore.set('oauth_flow_shopify', 'custom_distribution', {
         httpOnly: true,
@@ -23,12 +25,23 @@ export async function GET(request) {
         maxAge: 600,
         path: '/',
       });
+      if (searchParams.get('project_id')) {
+        cookieStore.set('oauth_project_shopify', JSON.stringify({
+          project_id: searchParams.get('project_id'),
+          project_slug: projectSlug,
+        }), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 600,
+          path: '/',
+        });
+      }
 
       return NextResponse.redirect(customInstallUrl);
     }
 
     // Standard OAuth flow (for public/unlisted apps)
-    const { searchParams } = new URL(request.url);
     const shop = searchParams.get('shop');
 
     if (!shop) {

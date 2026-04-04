@@ -142,14 +142,17 @@ export async function GET(request) {
 
     if (dbError) {
       console.error('Failed to store Meta token:', dbError);
-      return NextResponse.redirect(`${baseUrl}/auth/oauth-complete?provider=meta&error=meta_db_error`);
+      return NextResponse.redirect(`${settingsUrl}?error=meta_db_error`);
     }
 
     // If multiple accounts and none selected, prompt selection
-    const selectParam = (!selectedAccountId && adAccounts.length > 1) ? '&select=true' : '';
-    return NextResponse.redirect(`${baseUrl}/auth/oauth-complete?provider=meta&status=connected${selectParam}`);
+    if (!selectedAccountId && adAccounts.length > 1) {
+      return NextResponse.redirect(`${settingsUrl}?connected=meta&select_account=meta`);
+    }
+
+    return NextResponse.redirect(`${settingsUrl}?connected=meta`);
   } catch (error) {
     console.error('Meta OAuth callback error:', error);
-    return NextResponse.redirect(`${baseUrl}/auth/oauth-complete?provider=meta&error=meta_callback_failed`);
+    return NextResponse.redirect(`${baseUrl}/dashboard/ease/settings?error=meta_callback_failed`);
   }
 }

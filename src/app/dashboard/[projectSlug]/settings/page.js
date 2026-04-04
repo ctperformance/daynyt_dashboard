@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Suspense, useState, useEffect, useCallback, use } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { openOAuthPopup } from '@/lib/oauth-popup';
 import { useAuth } from '@/components/AuthProvider';
 
 const INTEGRATIONS_CONFIG = [
@@ -172,18 +171,8 @@ function SettingsContent({ projectSlug }) {
     }
   };
 
-  const handleOAuthPopup = (provider, url) => {
-    openOAuthPopup(url || `/api/auth/${provider}`, {
-      onSuccess: (connectedProvider) => {
-        const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads', bing: 'Bing Ads', klaviyo: 'Klaviyo', clarity: 'Microsoft Clarity' };
-        const providerName = nameMap[connectedProvider] || connectedProvider;
-        setToast({ type: 'success', message: `${providerName} erfolgreich verbunden!` });
-        fetchStatus();
-      },
-      onError: (error) => {
-        setToast({ type: 'error', message: `Verbindungsfehler: ${error}` });
-      },
-    });
+  const handleOAuthRedirect = (provider) => {
+    window.location.href = `/api/auth/${provider}?project_id=${projectId}&project_slug=${projectSlug}`;
   };
 
   const handleApiKeySave = async (provider, token, accountId) => {
@@ -244,7 +233,7 @@ function SettingsContent({ projectSlug }) {
   const handleShopifyConnect = (e) => {
     e.preventDefault();
     if (shopDomain) {
-      handleOAuthPopup('shopify', `/api/auth/shopify?shop=${encodeURIComponent(shopDomain)}`);
+      window.location.href = `/api/auth/shopify?shop=${encodeURIComponent(shopDomain)}&project_id=${projectId}&project_slug=${projectSlug}`;
     }
   };
 
@@ -354,7 +343,7 @@ function SettingsContent({ projectSlug }) {
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleOAuthPopup(integration.provider, `/api/auth/${integration.provider}?project_id=${projectId}&project_slug=${projectSlug}`)}
+                        onClick={() => handleOAuthRedirect(integration.provider)}
                         className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1 rounded-full transition-colors"
                       >
                         Verbinden

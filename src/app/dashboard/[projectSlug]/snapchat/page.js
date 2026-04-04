@@ -112,7 +112,8 @@ export default function SnapchatPage({ params }) {
             'Conversion-Tracking & Zielgruppen-Insights',
             'Reichweiten-Analyse & Frequency-Daten',
           ]}
-          connectUrl="/api/auth/snapchat"
+          projectId={projectId}
+          projectSlug={projectSlug}
         />
       )}
 

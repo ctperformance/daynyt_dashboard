@@ -4,16 +4,21 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import KpiCard from '@/components/KpiCard';
 import ConnectPrompt from '@/components/ConnectPrompt';
+import { useAuth } from '@/components/AuthProvider';
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_PROJECT_ID;
 
 export default function MetaPage() {
+  const { userProjects } = useAuth();
   const [connected, setConnected] = useState(null); // null = loading
   const [campaigns, setCampaigns] = useState(null);
   const [totals, setTotals] = useState(null);
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [days, setDays] = useState(30);
+
+  const project = userProjects.find((p) => p.slug === 'ease');
+  const projectId = project?.id;
 
   // Check connection status
   useEffect(() => {
@@ -114,7 +119,8 @@ export default function MetaPage() {
             'Conversion-Funnel (View \u2192 Click \u2192 Purchase)',
             'Audience Insights & Demographics',
           ]}
-          connectUrl="/api/auth/meta"
+          projectId={projectId}
+          projectSlug="ease"
         />
       )}
 

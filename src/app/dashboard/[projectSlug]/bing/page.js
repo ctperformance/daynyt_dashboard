@@ -112,7 +112,8 @@ export default function BingAdsPage({ params }) {
             'Conversion-Tracking mit Wertanalyse',
             'Microsoft Search Netzwerk Performance',
           ]}
-          connectUrl="/api/auth/bing"
+          projectId={projectId}
+          projectSlug={projectSlug}
         />
       )}
 

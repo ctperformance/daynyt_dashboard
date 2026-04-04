@@ -99,7 +99,8 @@ export default function EmailPage({ params }) {
             'Flow-Analyse & Automation-Stats',
             'Umsatz-Attribution pro Kampagne',
           ]}
-          connectUrl="/api/auth/klaviyo"
+          projectId={projectId}
+          projectSlug={projectSlug}
         />
       )}
 

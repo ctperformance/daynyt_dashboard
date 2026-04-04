@@ -4,15 +4,20 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import KpiCard from '@/components/KpiCard';
 import ConnectPrompt from '@/components/ConnectPrompt';
+import { useAuth } from '@/components/AuthProvider';
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_PROJECT_ID;
 
 export default function ShopifyPage() {
+  const { userProjects } = useAuth();
   const [connected, setConnected] = useState(null); // null = loading
   const [stats, setStats] = useState(null);
   const [shop, setShop] = useState(null);
   const [error, setError] = useState(null);
   const [days, setDays] = useState(30);
+
+  const project = userProjects.find((p) => p.slug === 'ease');
+  const projectId = project?.id;
 
   // Check connection status
   useEffect(() => {
@@ -114,6 +119,8 @@ export default function ShopifyPage() {
             'Quiz \u2192 Kauf Attribution',
           ]}
           showShopInput={!process.env.NEXT_PUBLIC_SHOPIFY_CUSTOM_DIST}
+          projectId={projectId}
+          projectSlug="ease"
         />
       )}
 

@@ -1,10 +1,8 @@
 'use client';
 
-import { openOAuthPopup } from '@/lib/oauth-popup';
-
 /**
  * Reusable "connect this integration" prompt component.
- * Opens OAuth in a popup window instead of same-tab redirect.
+ * Uses same-window redirect for all OAuth providers.
  */
 export default function ConnectPrompt({
   provider,
@@ -12,30 +10,15 @@ export default function ConnectPrompt({
   description,
   icon,
   features,
-  connectUrl,
-  onConnect,
+  projectId,
+  projectSlug,
   showShopInput,
 }) {
   const handleConnect = () => {
-    const url = connectUrl || `/api/auth/${provider}`;
-    // For Shopify Custom Distribution, open in same window (Shopify blocks popups)
-    if (provider === 'shopify' && !showShopInput) {
-      window.location.href = url;
-      return;
-    }
-    openOAuthPopup(url, {
-      onSuccess: (connectedProvider) => {
-        if (onConnect) {
-          onConnect(connectedProvider);
-        } else {
-          // Reload to show connected state
-          window.location.reload();
-        }
-      },
-      onError: (error) => {
-        alert(`Verbindungsfehler: ${error}`);
-      },
-    });
+    const params = new URLSearchParams();
+    if (projectId) params.set('project_id', projectId);
+    if (projectSlug) params.set('project_slug', projectSlug);
+    window.location.href = `/api/auth/${provider}?${params.toString()}`;
   };
 
   return (
@@ -47,7 +30,6 @@ export default function ConnectPrompt({
       <h2 className="text-lg font-medium text-ease-cream mb-2">{title} verbinden</h2>
       <p className="text-sm text-gray-500 leading-relaxed mb-6">{description}</p>
 
-      {/* Feature List */}
       {features && features.length > 0 && (
         <div className="text-left bg-ease-bg/50 rounded-lg p-4 mb-6">
           <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-3">Features nach Verbindung</p>
@@ -62,9 +44,8 @@ export default function ConnectPrompt({
         </div>
       )}
 
-      {/* Shopify store input */}
       {showShopInput ? (
-        <ShopifyConnectForm onConnect={onConnect} />
+        <ShopifyConnectForm projectId={projectId} projectSlug={projectSlug} />
       ) : (
         <button
           onClick={handleConnect}
@@ -77,25 +58,16 @@ export default function ConnectPrompt({
   );
 }
 
-function ShopifyConnectForm({ onConnect }) {
+function ShopifyConnectForm({ projectId, projectSlug }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const shop = formData.get('shop');
     if (shop) {
-      const url = `/api/auth/shopify?shop=${encodeURIComponent(shop)}`;
-      openOAuthPopup(url, {
-        onSuccess: (connectedProvider) => {
-          if (onConnect) {
-            onConnect(connectedProvider);
-          } else {
-            window.location.reload();
-          }
-        },
-        onError: (error) => {
-          alert(`Verbindungsfehler: ${error}`);
-        },
-      });
+      const params = new URLSearchParams({ shop });
+      if (projectId) params.set('project_id', projectId);
+      if (projectSlug) params.set('project_slug', projectSlug);
+      window.location.href = `/api/auth/shopify?${params.toString()}`;
     }
   };
 

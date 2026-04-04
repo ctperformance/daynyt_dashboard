@@ -100,6 +100,8 @@ export default function ShopifyPage({ params }) {
             'Quiz \u2192 Kauf Attribution',
           ]}
           showShopInput={!process.env.NEXT_PUBLIC_SHOPIFY_CUSTOM_DIST}
+          projectId={projectId}
+          projectSlug={projectSlug}
         />
       )}
 

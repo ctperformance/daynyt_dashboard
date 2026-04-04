@@ -112,7 +112,8 @@ export default function TikTokPage({ params }) {
             'Conversion-Tracking & CPA-Analyse',
             'Zielgruppen-Performance & Reichweite',
           ]}
-          connectUrl="/api/auth/tiktok"
+          projectId={projectId}
+          projectSlug={projectSlug}
         />
       )}
 

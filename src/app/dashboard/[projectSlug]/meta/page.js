@@ -112,7 +112,8 @@ export default function MetaPage({ params }) {
             'Conversion-Funnel (View \u2192 Click \u2192 Purchase)',
             'Audience Insights & Demographics',
           ]}
-          connectUrl="/api/auth/meta"
+          projectId={projectId}
+          projectSlug={projectSlug}
         />
       )}
 

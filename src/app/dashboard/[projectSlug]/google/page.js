@@ -112,7 +112,8 @@ export default function GoogleAdsPage({ params }) {
             'Conversion-Tracking mit Wertanalyse',
             'Keyword- und Anzeigengruppen-Performance',
           ]}
-          connectUrl="/api/auth/google"
+          projectId={projectId}
+          projectSlug={projectSlug}
         />
       )}
 

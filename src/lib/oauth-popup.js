@@ -6,8 +6,8 @@
  * the popup detects this and notifies the opener window.
  */
 export function openOAuthPopup(url, { onSuccess, onError } = {}) {
-  const width = 500;
-  const height = 700;
+  const width = 600;
+  const height = 900;
   const left = window.screenX + (window.outerWidth - width) / 2;
   const top = window.screenY + (window.outerHeight - height) / 2;
 

@@ -237,8 +237,7 @@ function SettingsContent({ projectSlug }) {
     window.location.href = `/api/auth/shopify?shop=${encodeURIComponent(domain)}&project_id=${projectId}&project_slug=${projectSlug}`;
   };
 
-  // Check if addon is enabled for this project
-  const project = userProjects.find((p) => p.slug === projectSlug);
+  // Check if addon is enabled for this project (uses `project` from above)
   const projectAddons = project?.addons || {};
 
   const isAddonEnabled = (integration) => {

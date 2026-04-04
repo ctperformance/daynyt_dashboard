@@ -43,7 +43,6 @@ function validateShopifyHmac(query, secret) {
 
 export async function GET(request) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const settingsUrl = `${baseUrl}/dashboard/ease/settings`;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -51,6 +50,25 @@ export async function GET(request) {
     const state = searchParams.get('state');
     const shop = searchParams.get('shop');
     const hmac = searchParams.get('hmac');
+
+    // Read cookies early to get project info for redirect URL
+    const cookieStore = await cookies();
+    const flowType = cookieStore.get('oauth_flow_shopify')?.value;
+    const isCustomDistribution = flowType === 'custom_distribution';
+
+    // Get project info from cookie (set during auth init)
+    let projectSlug = 'ease';
+    let projectId = null;
+    try {
+      const projectCookie = cookieStore.get('oauth_project_shopify')?.value;
+      if (projectCookie) {
+        const projectData = JSON.parse(projectCookie);
+        projectSlug = projectData.project_slug || projectSlug;
+        projectId = projectData.project_id || null;
+      }
+    } catch {}
+
+    const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/settings`;
 
     if (!code || !shop) {
       return NextResponse.redirect(`${settingsUrl}?error=shopify_missing_params`);
@@ -65,11 +83,6 @@ export async function GET(request) {
         return NextResponse.redirect(`${settingsUrl}?error=shopify_hmac_invalid`);
       }
     }
-
-    // Check if this is a Custom Distribution flow
-    const cookieStore = await cookies();
-    const flowType = cookieStore.get('oauth_flow_shopify')?.value;
-    const isCustomDistribution = flowType === 'custom_distribution';
 
     // For standard OAuth flow, validate state against cookie
     if (!isCustomDistribution && state) {
@@ -90,6 +103,7 @@ export async function GET(request) {
     cookieStore.delete('oauth_nonce_shopify');
     cookieStore.delete('oauth_shop_shopify');
     cookieStore.delete('oauth_flow_shopify');
+    cookieStore.delete('oauth_project_shopify');
 
     // Exchange code for permanent access token
     const tokenData = await exchangeCode('shopify', code, { shop });
@@ -115,7 +129,20 @@ export async function GET(request) {
 
     // Store in Supabase
     const supabase = createServiceClient();
-    const projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
+
+    // If no project_id from cookie, look it up by slug
+    if (!projectId) {
+      const { data: proj } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('slug', projectSlug)
+        .single();
+      projectId = proj?.id;
+    }
+
+    if (!projectId) {
+      return NextResponse.redirect(`${settingsUrl}?error=shopify_no_project`);
+    }
 
     const { error: dbError } = await supabase
       .from('integrations_oauth')

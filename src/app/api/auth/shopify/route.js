@@ -12,7 +12,8 @@ export async function GET(request) {
   const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/settings`;
 
   try {
-    const customInstallUrl = process.env.SHOPIFY_INSTALL_URL;
+    const customInstallUrl = process.env.SHOPIFY_INSTALL_URL
+      || (process.env.SHOPIFY_CLIENT_ID ? `https://admin.shopify.com/oauth/install?client_id=${process.env.SHOPIFY_CLIENT_ID}` : null);
 
     // Custom Distribution: redirect directly to the install link
     if (customInstallUrl) {

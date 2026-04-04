@@ -336,7 +336,7 @@ function SettingsContent({ projectSlug }) {
                       </button>
                     ) : integration.provider === 'shopify' ? (
                       <button
-                        onClick={() => { window.location.href = '/api/auth/shopify'; }}
+                        onClick={() => { window.location.href = `/api/auth/shopify?project_id=${projectId}&project_slug=${projectSlug}`; }}
                         className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1 rounded-full transition-colors"
                       >
                         Verbinden

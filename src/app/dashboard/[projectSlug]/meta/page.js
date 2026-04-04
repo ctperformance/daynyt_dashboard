@@ -48,10 +48,14 @@ export default function MetaPage({ params }) {
           setCampaigns(data.campaigns || []);
           setTotals(data.totals || {});
           setAccount(data.account || {});
+        } else if (res.status === 401) {
+          const errData = await res.json().catch(() => ({}));
+          setError(errData.token_expired ? 'Meta Token abgelaufen — bitte neu verbinden unter Einstellungen.' : 'Authentifizierungsfehler');
         } else if (res.status === 404) {
           setConnected(false);
         } else {
-          setError('Fehler beim Laden der Kampagnendaten.');
+          const errData = await res.json().catch(() => ({}));
+          setError(errData.detail || errData.error || 'Fehler beim Laden der Kampagnendaten.');
         }
       } catch {
         setError('Netzwerkfehler beim Laden der Daten.');
@@ -130,7 +134,7 @@ export default function MetaPage({ params }) {
               <KpiCard title="CPA" value={`\u20AC${totals.cpa || '0.00'}`} />
               <KpiCard title="Impressionen" value={Number(totals.impressions || 0).toLocaleString('de-DE')} />
               <KpiCard title="Klicks" value={Number(totals.clicks || 0).toLocaleString('de-DE')} />
-              <KpiCard title="Conversions" value={Number(totals.conversions || 0).toLocaleString('de-DE')} />
+              <KpiCard title="Kaeufe" value={Number(totals.purchases || 0).toLocaleString('de-DE')} />
             </div>
           )}
 
@@ -148,7 +152,7 @@ export default function MetaPage({ params }) {
                       <th className="text-right px-4 py-3 font-medium">Impressionen</th>
                       <th className="text-right px-4 py-3 font-medium">Klicks</th>
                       <th className="text-right px-4 py-3 font-medium">CTR</th>
-                      <th className="text-right px-4 py-3 font-medium">Conversions</th>
+                      <th className="text-right px-4 py-3 font-medium">Kaeufe</th>
                       <th className="text-right px-4 py-3 font-medium">ROAS</th>
                       <th className="text-right px-5 py-3 font-medium">CPA</th>
                     </tr>
@@ -161,7 +165,7 @@ export default function MetaPage({ params }) {
                         <td className="text-right px-4 py-3 text-gray-400">{Number(campaign.impressions).toLocaleString('de-DE')}</td>
                         <td className="text-right px-4 py-3 text-gray-400">{Number(campaign.clicks).toLocaleString('de-DE')}</td>
                         <td className="text-right px-4 py-3 text-gray-400">{campaign.ctr}%</td>
-                        <td className="text-right px-4 py-3 text-gray-400">{campaign.conversions}</td>
+                        <td className="text-right px-4 py-3 text-gray-400">{campaign.purchases}</td>
                         <td className="text-right px-4 py-3">
                           <span className={parseFloat(campaign.roas) >= 1 ? 'text-ease-green' : 'text-ease-red'}>{campaign.roas}x</span>
                         </td>

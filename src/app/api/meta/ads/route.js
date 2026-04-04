@@ -43,16 +43,26 @@ export async function GET(request) {
     const insightsUrl = `https://graph.facebook.com/v21.0/${adAccountId}/insights?fields=${fields}&time_range=${timeRange}&level=ad&filtering=${encodeURIComponent(filtering)}&limit=100&access_token=${access_token}`;
     const insightsRes = await fetch(insightsUrl);
 
+    let insightsData;
     if (!insightsRes.ok) {
       const err = await insightsRes.json().catch(() => ({}));
       console.error('Meta API error (ads):', err);
       if (insightsRes.status === 401 || err?.error?.code === 190) {
         return NextResponse.json({ error: 'Token expired', token_expired: true }, { status: 401 });
       }
-      return NextResponse.json({ error: 'Failed to fetch Meta ads' }, { status: 502 });
+      // Try fallback with basic fields only
+      const basicFields = ['ad_name', 'ad_id', 'adset_name', 'adset_id', 'campaign_name', 'campaign_id', 'spend', 'impressions', 'clicks', 'reach', 'inline_link_clicks', 'actions', 'action_values', 'cpc', 'cpm', 'ctr', 'frequency'].join(',');
+      const fallbackUrl = `https://graph.facebook.com/v21.0/${adAccountId}/insights?fields=${basicFields}&time_range=${timeRange}&level=ad&filtering=${encodeURIComponent(filtering)}&limit=100&access_token=${access_token}`;
+      const fallbackRes = await fetch(fallbackUrl);
+      if (!fallbackRes.ok) {
+        const fallbackErr = await fallbackRes.json().catch(() => ({}));
+        console.error('Meta API fallback error (ads):', fallbackErr);
+        return NextResponse.json({ error: 'Failed to fetch Meta ads', detail: fallbackErr?.error?.message || JSON.stringify(fallbackErr) }, { status: 502 });
+      }
+      insightsData = await fallbackRes.json();
+    } else {
+      insightsData = await insightsRes.json();
     }
-
-    const insightsData = await insightsRes.json();
 
     const ads = (insightsData.data || []).map((row) => ({
       id: row.ad_id,

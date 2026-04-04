@@ -184,7 +184,11 @@ export default function AdsPage({ params }) {
         setFetchedAt(data.fetched_at);
       } else {
         const err = await res.json().catch(() => ({}));
-        setError(err.error || 'Fehler beim Laden');
+        if (err.token_expired) {
+          setError('Meta Token abgelaufen — bitte neu verbinden unter Einstellungen.');
+        } else {
+          setError(err.detail || err.error || 'Fehler beim Laden');
+        }
       }
     } catch { setError('Netzwerkfehler'); }
     setLoading(false);

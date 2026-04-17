@@ -34,7 +34,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Meta OAuth init error:', error);
     return NextResponse.redirect(
-      new URL('/dashboard/ease/settings?error=meta_init_failed', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
+      new URL('/dashboard/ease/integrations?error=meta_init_failed', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
     );
   }
 }

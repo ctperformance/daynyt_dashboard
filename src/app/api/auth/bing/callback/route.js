@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { exchangeCode } from '@/lib/oauth';
+import { exchangeCode, decodeOAuthState, resolveProjectId } from '@/lib/oauth';
 import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
@@ -8,13 +8,16 @@ export const fetchCache = 'force-no-store';
 
 export async function GET(request) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const settingsUrl = `${baseUrl}/dashboard/ease/settings`;
 
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
+
+    const { project_id: stateProjectId, project_slug: stateProjectSlug } = decodeOAuthState(state);
+    const projectSlug = stateProjectSlug || 'ease';
+    const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/integrations`;
 
     if (error) {
       console.error('Bing OAuth denied:', error);
@@ -25,7 +28,6 @@ export async function GET(request) {
       return NextResponse.redirect(`${settingsUrl}?error=bing_missing_params`);
     }
 
-    // Validate state against cookie
     const cookieStore = await cookies();
     const storedState = cookieStore.get('oauth_state_bing')?.value;
     cookieStore.delete('oauth_state_bing');
@@ -34,7 +36,12 @@ export async function GET(request) {
       return NextResponse.redirect(`${settingsUrl}?error=bing_state_mismatch`);
     }
 
-    // Exchange code for tokens
+    const supabase = createServiceClient();
+    const projectId = await resolveProjectId(supabase, { project_id: stateProjectId, project_slug: stateProjectSlug });
+    if (!projectId) {
+      return NextResponse.redirect(`${settingsUrl}?error=bing_no_project`);
+    }
+
     const tokenData = await exchangeCode('bing', code);
     const accessToken = tokenData.access_token;
     const refreshToken = tokenData.refresh_token || null;
@@ -46,7 +53,6 @@ export async function GET(request) {
 
     const tokenExpiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : null;
 
-    // Fetch Bing Ads account info
     let accountId = null;
     let accountName = null;
     const developerToken = process.env.BING_ADS_DEVELOPER_TOKEN;
@@ -73,10 +79,6 @@ export async function GET(request) {
     } catch (apiError) {
       console.warn('Could not fetch Bing Ads account info:', apiError.message);
     }
-
-    // Store in Supabase
-    const supabase = createServiceClient();
-    const projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
 
     const { error: dbError } = await supabase
       .from('integrations_oauth')
@@ -106,6 +108,6 @@ export async function GET(request) {
     return NextResponse.redirect(`${settingsUrl}?connected=bing`);
   } catch (error) {
     console.error('Bing OAuth callback error:', error);
-    return NextResponse.redirect(`${settingsUrl}?error=bing_callback_failed`);
+    return NextResponse.redirect(`${baseUrl}/dashboard/ease/integrations?error=bing_callback_failed`);
   }
 }

@@ -43,13 +43,21 @@ export async function GET(request) {
       clarity: { connected: false },
     };
 
+    const now = Date.now();
+    const SOON_MS = 7 * 24 * 60 * 60 * 1000;
     for (const row of data || []) {
+      const expiresAt = row.token_expires_at ? new Date(row.token_expires_at).getTime() : null;
+      const expired = expiresAt ? expiresAt <= now : false;
+      const expiringSoon = expiresAt && !expired ? expiresAt - now < SOON_MS : false;
       status[row.provider] = {
         connected: true,
         account_id: row.provider_account_id,
         connected_at: row.connected_at,
         scope: row.scope,
         token_expires_at: row.token_expires_at,
+        expired,
+        expiring_soon: expiringSoon,
+        needs_reauth: expired || row.provider_metadata?.needs_reauth === true,
         metadata: row.provider_metadata || {},
       };
     }

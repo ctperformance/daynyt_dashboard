@@ -1,280 +1,73 @@
 'use client';
 
 import Link from 'next/link';
-import { Suspense, useState, useEffect, useCallback, use } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, use } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-
-const INTEGRATIONS_CONFIG = [
-  {
-    key: 'quiz',
-    name: 'Quiz-Funnel',
-    icon: '\u2726',
-    provider: null,
-    description: 'Quiz Webhook (Add-on)',
-    addonKey: 'quiz',
-  },
-  {
-    key: 'meta',
-    name: 'Meta Ads',
-    icon: '\u25CE',
-    provider: 'meta',
-    description: 'Meta Business Manager API',
-  },
-  {
-    key: 'google',
-    name: 'Google Ads',
-    icon: '\u25C9',
-    provider: 'google',
-    description: 'Google Ads API',
-  },
-  {
-    key: 'tiktok',
-    name: 'TikTok Ads',
-    icon: '\u266A',
-    provider: 'tiktok',
-    description: 'TikTok Business API',
-  },
-  {
-    key: 'snapchat',
-    name: 'Snapchat Ads',
-    icon: '\u25C7',
-    provider: 'snapchat',
-    description: 'Snapchat Marketing API',
-  },
-  {
-    key: 'bing',
-    name: 'Bing Ads',
-    icon: '\u25A3',
-    provider: 'bing',
-    description: 'Microsoft Advertising API',
-  },
-  {
-    key: 'shopify',
-    name: 'Shopify',
-    icon: '\u2B21',
-    provider: 'shopify',
-    description: 'Shopify Admin API',
-    needsShopOAuth: true,
-  },
-  {
-    key: 'klaviyo',
-    name: 'Klaviyo',
-    icon: '\u2709',
-    provider: 'klaviyo',
-    description: 'E-Mail Marketing API',
-  },
-  {
-    key: 'clarity',
-    name: 'Microsoft Clarity',
-    icon: '\u25CE',
-    provider: 'clarity',
-    description: 'Website Analytics & Heatmaps',
-    needsApiKey: true,
-  },
-];
 
 export default function SettingsPage({ params }) {
   const { projectSlug } = use(params);
-
-  return (
-    <Suspense fallback={<div className="px-8 py-8 text-gray-600 text-sm">Laden...</div>}>
-      <SettingsContent projectSlug={projectSlug} />
-    </Suspense>
-  );
-}
-
-function SettingsContent({ projectSlug }) {
-  const searchParams = useSearchParams();
-  const { userProjects } = useAuth();
-  const [status, setStatus] = useState({});
-  const [loading, setLoading] = useState(true);
+  const { user, userProjects, supabase, isAdmin } = useAuth();
   const [toast, setToast] = useState(null);
-  const [shopifyDomain, setShopifyDomain] = useState('');
-  const [disconnecting, setDisconnecting] = useState(null);
-  const [clarityProjectId, setClarityProjectId] = useState('');
-  const [clarityApiToken, setClarityApiToken] = useState('');
-  const [savingApiKey, setSavingApiKey] = useState(false);
-  const [selectingAccount, setSelectingAccount] = useState(null);
-  const [showAccountSelector, setShowAccountSelector] = useState(null);
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(null);
 
   const project = userProjects.find((p) => p.slug === projectSlug);
   const projectName = project?.name || projectSlug.toUpperCase();
   const projectId = project?.id;
 
-  const fetchStatus = useCallback(async () => {
-    if (!projectId) return;
-    try {
-      const res = await fetch(`/api/integrations/status?project_id=${projectId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setStatus(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch integration status:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
-
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
-
-  useEffect(() => {
-    const connected = searchParams.get('connected');
-    const error = searchParams.get('error');
-
-    const selectAccount = searchParams.get('select_account');
-    if (selectAccount) {
-      setShowAccountSelector(selectAccount);
-    }
-
-    if (connected) {
-      const nameMap = { meta: 'Meta Ads', shopify: 'Shopify', google: 'Google Ads', tiktok: 'TikTok Ads', snapchat: 'Snapchat Ads', bing: 'Bing Ads', klaviyo: 'Klaviyo', clarity: 'Microsoft Clarity' };
-      const providerName = nameMap[connected] || connected;
-      setToast({ type: 'success', message: selectAccount ? `${providerName} verbunden — bitte Werbekonto auswaehlen.` : `${providerName} erfolgreich verbunden!` });
-      window.history.replaceState({}, '', `/dashboard/${projectSlug}/settings`);
-      fetchStatus();
-    } else if (error) {
-      setToast({ type: 'error', message: `Verbindungsfehler: ${error}` });
-      window.history.replaceState({}, '', `/dashboard/${projectSlug}/settings`);
-    }
-  }, [searchParams, fetchStatus, projectSlug]);
-
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
-
-  const handleDisconnect = async (provider) => {
-    if (!confirm('Verbindung wirklich trennen?')) return;
-    setDisconnecting(provider);
-    try {
-      const res = await fetch('/api/auth/disconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, project_id: projectId }),
-      });
-      if (res.ok) {
-        setToast({ type: 'success', message: 'Verbindung getrennt.' });
-        fetchStatus();
-      } else {
-        setToast({ type: 'error', message: 'Fehler beim Trennen der Verbindung.' });
-      }
-    } catch {
-      setToast({ type: 'error', message: 'Netzwerkfehler.' });
-    } finally {
-      setDisconnecting(null);
-    }
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
   };
 
-  const handleOAuthRedirect = (provider) => {
-    window.location.href = `/api/auth/${provider}?project_id=${projectId}&project_slug=${projectSlug}`;
-  };
-
-  const handleApiKeySave = async (provider, token, accountId) => {
-    setSavingApiKey(true);
-    try {
-      const res = await fetch('/api/integrations/save-apikey', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_id: projectId,
-          provider,
-          api_token: token,
-          provider_account_id: accountId,
-        }),
-      });
-      if (res.ok) {
-        setToast({ type: 'success', message: `${provider === 'clarity' ? 'Microsoft Clarity' : provider} erfolgreich verbunden!` });
-        fetchStatus();
-      } else {
-        setToast({ type: 'error', message: 'Fehler beim Speichern der Verbindung.' });
-      }
-    } catch {
-      setToast({ type: 'error', message: 'Netzwerkfehler.' });
-    }
-    setSavingApiKey(false);
-  };
-
-  const handleSelectAdAccount = async (provider, accountId) => {
-    setSelectingAccount(provider);
-    try {
-      const res = await fetch('/api/integrations/select-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_id: projectId, provider, account_id: accountId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setToast({ type: 'success', message: `Werbekonto "${data.account.name}" ausgewaehlt.` });
-        setShowAccountSelector(null);
-        fetchStatus();
-      } else {
-        setToast({ type: 'error', message: 'Fehler beim Auswaehlen des Kontos.' });
-      }
-    } catch {
-      setToast({ type: 'error', message: 'Netzwerkfehler.' });
-    } finally {
-      setSelectingAccount(null);
-    }
-  };
-
-  const handleClarityConnect = (e) => {
+  const handleUpdateEmail = async (e) => {
     e.preventDefault();
-    if (clarityProjectId && clarityApiToken) {
-      handleApiKeySave('clarity', clarityApiToken, clarityProjectId);
+    if (!newEmail) return;
+    setSaving('email');
+    try {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) showToast('error', error.message);
+      else {
+        showToast('success', 'Best\u00E4tigungs-E-Mail versendet. Bitte neue Adresse best\u00E4tigen.');
+        setNewEmail('');
+      }
+    } catch {
+      showToast('error', 'Fehler beim Aktualisieren der E-Mail.');
     }
+    setSaving(null);
   };
 
-  const handleShopifyConnect = (e) => {
+  const handleUpdatePassword = async (e) => {
     e.preventDefault();
-    if (!shopifyDomain) return;
-    const domain = shopifyDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-    window.location.href = `/api/auth/shopify?shop=${encodeURIComponent(domain)}&project_id=${projectId}&project_slug=${projectSlug}`;
-  };
-
-  // Check if addon is enabled for this project (uses `project` from above)
-  const projectAddons = project?.addons || {};
-
-  const isAddonEnabled = (integration) => {
-    if (!integration.addonKey) return true; // Not an add-on, always show
-    return projectAddons[integration.addonKey]?.enabled === true;
-  };
-
-  const getAddonName = (integration) => {
-    if (!integration.addonKey) return integration.name;
-    return projectAddons[integration.addonKey]?.name || integration.name;
-  };
-
-  // Filter integrations — hide add-ons that aren't enabled
-  const visibleIntegrations = INTEGRATIONS_CONFIG.filter(i => isAddonEnabled(i));
-
-  const getIntegrationStatus = (integration) => {
-    if (integration.addonKey && isAddonEnabled(integration)) return 'connected';
-    if (integration.comingSoon) return 'coming_soon';
-    if (!integration.provider) return 'disconnected';
-    return status[integration.provider]?.connected ? 'connected' : 'disconnected';
-  };
-
-  const getStatusDetail = (integration) => {
-    if (integration.addonKey && isAddonEnabled(integration)) return 'Add-on aktiv';
-    if (integration.comingSoon) return 'Nicht verfuegbar';
-    const providerStatus = status[integration.provider];
-    if (!providerStatus?.connected) return 'Nicht verbunden';
-    if (providerStatus.account_id) {
-      return `Konto: ${providerStatus.metadata?.primary_account_name || providerStatus.metadata?.shop_name || providerStatus.account_id}`;
+    if (!newPassword || newPassword.length < 8) {
+      showToast('error', 'Passwort muss mindestens 8 Zeichen haben.');
+      return;
     }
-    return 'Verbunden';
+    if (newPassword !== confirmPassword) {
+      showToast('error', 'Passw\u00F6rter stimmen nicht \u00FCberein.');
+      return;
+    }
+    setSaving('password');
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) showToast('error', error.message);
+      else {
+        showToast('success', 'Passwort erfolgreich ge\u00E4ndert.');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch {
+      showToast('error', 'Fehler beim \u00C4ndern des Passworts.');
+    }
+    setSaving(null);
   };
 
   return (
-    <div className="px-8 py-8 max-w-4xl">
+    <div className="px-8 py-8 max-w-4xl mx-auto w-full">
       {toast && (
-        <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl border text-sm font-medium shadow-lg transition-all ${
+        <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl border text-sm font-medium shadow-lg ${
           toast.type === 'success'
             ? 'bg-ease-green/10 border-ease-green/30 text-ease-green'
             : 'bg-ease-red/10 border-ease-red/30 text-ease-red'
@@ -283,194 +76,137 @@ function SettingsContent({ projectSlug }) {
         </div>
       )}
 
-      <div className="flex items-center gap-2 text-sm mb-1">
-        <Link href="/dashboard" className="text-gray-500 hover:text-ease-cream transition-colors">Dashboard</Link>
-        <span className="text-gray-600">/</span>
-        <Link href={`/dashboard/${projectSlug}`} className="text-gray-500 hover:text-ease-cream transition-colors">{projectName}</Link>
-        <span className="text-gray-600">/</span>
-        <span className="text-ease-cream font-medium">Einstellungen</span>
+      <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
+        <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
+        <span className="text-white/20">/</span>
+        <Link href={`/dashboard/${projectSlug}`} className="text-ease-muted hover:text-white transition-colors">{projectName}</Link>
+        <span className="text-white/20">/</span>
+        <span className="text-white font-medium">Einstellungen</span>
       </div>
 
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold text-ease-cream">Einstellungen</h1>
-        <p className="text-xs text-gray-500 mt-0.5">Integrationen & Konfiguration fuer {projectName}</p>
+      <div className="mb-8 animate-fade-in">
+        <h1 className="text-2xl font-bold tracking-tight">Einstellungen</h1>
+        <p className="text-xs text-ease-muted mt-1">Konto, Sicherheit & Abonnement</p>
       </div>
 
-      <div className="mb-8">
-        <h2 className="text-sm font-medium text-ease-cream mb-4">Integrationen</h2>
-        <div className="flex flex-col gap-3">
-          {visibleIntegrations.map((integration) => {
-            const integrationStatus = getIntegrationStatus(integration);
-            const detail = getStatusDetail(integration);
-
-            return (
-              <div key={integration.key} className="bg-ease-card border border-ease-border rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${
-                      integrationStatus === 'connected' ? 'bg-ease-accent/10 text-ease-accent' : 'bg-white/5 text-gray-600'
-                    }`}>
-                      {integration.icon}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-ease-cream">{getAddonName(integration)}</p>
-                      <p className="text-xs text-gray-500">{integration.description}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {!loading && <span className="text-xs text-gray-500">{detail}</span>}
-                    {loading ? (
-                      <span className="text-xs text-gray-600">Laden...</span>
-                    ) : integrationStatus === 'connected' ? (
-                      <div className="flex items-center gap-2">
-                        <span className="flex items-center gap-1.5 text-[11px] text-ease-green bg-ease-green/10 px-2.5 py-1 rounded-full">
-                          <span className="w-1.5 h-1.5 bg-ease-green rounded-full" />
-                          Verbunden
-                        </span>
-                        {!integration.addonKey && (
-                          <button
-                            onClick={() => handleDisconnect(integration.provider)}
-                            disabled={disconnecting === integration.provider}
-                            className="text-[11px] text-ease-red/70 hover:text-ease-red bg-ease-red/5 hover:bg-ease-red/10 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50"
-                          >
-                            {disconnecting === integration.provider ? '...' : 'Trennen'}
-                          </button>
-                        )}
-                      </div>
-                    ) : integrationStatus === 'coming_soon' ? (
-                      <span className="text-[11px] text-gray-600 bg-white/5 px-3 py-1 rounded-full">Bald verfuegbar</span>
-                    ) : integration.needsApiKey ? (
-                      <span className="text-[11px] text-ease-accent bg-ease-accent/10 px-3 py-1 rounded-full">
-                        API-Key eingeben
-                      </span>
-                    ) : integration.needsShopOAuth ? (
-                      <button
-                        onClick={() => document.getElementById('shopify-domain')?.focus()}
-                        className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1 rounded-full transition-colors"
-                      >
-                        Verbinden
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleOAuthRedirect(integration.provider)}
-                        className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1 rounded-full transition-colors"
-                      >
-                        Verbinden
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Ad Account Selector for providers with multiple accounts */}
-                {integrationStatus === 'connected' && !loading && status[integration.provider]?.metadata?.ad_accounts?.length > 1 && (
-                  <div className="mt-3 pl-[52px]">
-                    {showAccountSelector === integration.provider ? (
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-400">Werbekonto auswaehlen:</p>
-                        <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                          {status[integration.provider].metadata.ad_accounts.map((acc) => (
-                            <button
-                              key={acc.account_id}
-                              onClick={() => handleSelectAdAccount(integration.provider, acc.account_id)}
-                              disabled={selectingAccount === integration.provider}
-                              className={`text-left text-xs px-3 py-2 rounded-lg border transition-colors disabled:opacity-50 ${
-                                acc.account_id === status[integration.provider]?.account_id
-                                  ? 'border-ease-accent bg-ease-accent/10 text-ease-accent'
-                                  : 'border-ease-border bg-ease-bg text-gray-400 hover:border-ease-accent/50 hover:text-ease-cream'
-                              }`}
-                            >
-                              <span className="font-medium">{acc.name}</span>
-                              <span className="text-gray-600 ml-2">({acc.account_id})</span>
-                              {acc.account_id === status[integration.provider]?.account_id && (
-                                <span className="ml-2 text-ease-green">&#10003;</span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          onClick={() => setShowAccountSelector(null)}
-                          className="text-[11px] text-gray-500 hover:text-gray-400 transition-colors"
-                        >
-                          Abbrechen
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setShowAccountSelector(integration.provider)}
-                        className="text-[11px] text-gray-500 hover:text-ease-accent transition-colors"
-                      >
-                        {status[integration.provider]?.metadata?.needs_account_selection
-                          ? '⚠ Werbekonto auswaehlen'
-                          : 'Werbekonto wechseln'}
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {integration.needsShopOAuth && integrationStatus === 'disconnected' && !loading && (
-                  <form onSubmit={handleShopifyConnect} className="mt-3 flex items-center gap-2 pl-[52px]">
-                    <input
-                      id="shopify-domain"
-                      type="text"
-                      value={shopifyDomain}
-                      onChange={(e) => setShopifyDomain(e.target.value)}
-                      placeholder="dein-store.myshopify.com"
-                      className="flex-1 max-w-[240px] bg-ease-bg border border-ease-border rounded-lg px-3 py-1.5 text-xs text-ease-cream placeholder-gray-600 focus:outline-none focus:border-ease-accent transition-colors"
-                      required
-                    />
-                    <button
-                      type="submit"
-                      className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      Mit Shopify verbinden
-                    </button>
-                  </form>
-                )}
-
-                {integration.needsApiKey && integrationStatus === 'disconnected' && !loading && (
-                  <form onSubmit={handleClarityConnect} className="mt-3 pl-[52px] space-y-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={clarityProjectId}
-                        onChange={(e) => setClarityProjectId(e.target.value)}
-                        placeholder="Clarity Project ID"
-                        className="flex-1 max-w-[200px] bg-ease-bg border border-ease-border rounded-lg px-3 py-1.5 text-xs text-ease-cream placeholder-gray-600 focus:outline-none focus:border-ease-accent transition-colors"
-                        required
-                      />
-                      <input
-                        type="password"
-                        value={clarityApiToken}
-                        onChange={(e) => setClarityApiToken(e.target.value)}
-                        placeholder="API Token"
-                        className="flex-1 max-w-[200px] bg-ease-bg border border-ease-border rounded-lg px-3 py-1.5 text-xs text-ease-cream placeholder-gray-600 focus:outline-none focus:border-ease-accent transition-colors"
-                        required
-                      />
-                      <button
-                        type="submit"
-                        disabled={savingApiKey}
-                        className="text-[11px] text-ease-accent bg-ease-accent/10 hover:bg-ease-accent/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {savingApiKey ? '...' : 'Verbinden'}
-                      </button>
-                    </div>
-                  </form>
-                )}
+      {/* Account */}
+      <section className="mb-6">
+        <h2 className="text-[11px] uppercase tracking-wider text-white/40 mb-3">Konto</h2>
+        <div className="glass rounded-2xl divide-y divide-white/[0.04]">
+          {/* Email */}
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-medium text-white">E-Mail-Adresse</p>
+                <p className="text-xs text-ease-muted mt-0.5">{user?.email || '\u2014'}</p>
               </div>
-            );
-          })}
-        </div>
-      </div>
+            </div>
+            <form onSubmit={handleUpdateEmail} className="flex items-center gap-2">
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="neue@email.de"
+                className="flex-1 bg-ease-bg border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-ease-accent transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={saving === 'email' || !newEmail}
+                className="text-xs bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-30 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                {saving === 'email' ? '...' : '\u00C4ndern'}
+              </button>
+            </form>
+          </div>
 
-      <div>
-        <h2 className="text-sm font-medium text-ease-cream mb-4">Projekt-Info</h2>
-        <div className="bg-ease-card border border-ease-border rounded-xl p-5 space-y-3">
-          <InfoRow label="Kunde" value={projectName} />
-          <InfoRow label="Slug" value={projectSlug} mono />
-          <InfoRow label="Project ID" value={projectId || '\u2014'} mono />
-          <InfoRow label="Status" value="Aktiv" />
+          {/* Password */}
+          <div className="p-5">
+            <p className="text-sm font-medium text-white mb-3">Passwort \u00E4ndern</p>
+            <form onSubmit={handleUpdatePassword} className="space-y-2">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Neues Passwort (min. 8 Zeichen)"
+                className="w-full bg-ease-bg border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-ease-accent transition-colors"
+              />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Passwort best\u00E4tigen"
+                className="w-full bg-ease-bg border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-ease-accent transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={saving === 'password' || !newPassword}
+                className="text-xs bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-30 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                {saving === 'password' ? '...' : 'Passwort speichern'}
+              </button>
+            </form>
+          </div>
+
+          {/* 2FA */}
+          <div className="p-5 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white">Zwei-Faktor-Authentifizierung</p>
+              <p className="text-xs text-ease-muted mt-0.5">Extra-Schutz per Authenticator-App</p>
+            </div>
+            <span className="text-[11px] text-white/40 bg-white/[0.04] px-3 py-1 rounded-full">
+              Bald verf\u00FCgbar
+            </span>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Plan & Usage */}
+      <section className="mb-6">
+        <h2 className="text-[11px] uppercase tracking-wider text-white/40 mb-3">Abonnement & Nutzung</h2>
+        <div className="glass rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-sm font-medium text-white">Aktueller Plan</p>
+              <p className="text-xs text-ease-muted mt-0.5">Pro</p>
+            </div>
+            <span className="text-[11px] text-white/40 bg-white/[0.04] px-3 py-1 rounded-full">
+              Upgrade bald verf\u00FCgbar
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <UsageStat label="Projekte" value={userProjects.length} limit="\u221E" />
+            <UsageStat label="Integrationen" value="\u2014" limit="unbegrenzt" />
+            <UsageStat label="API-Calls (30T)" value="\u2014" limit="\u2014" />
+          </div>
+        </div>
+      </section>
+
+      {/* Project Info */}
+      <section className="mb-6">
+        <h2 className="text-[11px] uppercase tracking-wider text-white/40 mb-3">Projekt-Info</h2>
+        <div className="glass rounded-2xl p-5 space-y-3">
+          <InfoRow label="Projekt" value={projectName} />
+          <InfoRow label="Slug" value={projectSlug} mono />
+          <InfoRow label="Projekt-ID" value={projectId || '\u2014'} mono />
+          <InfoRow label="Rolle" value={isAdmin ? 'Admin' : 'Kunde'} />
+        </div>
+      </section>
+
+      {/* Danger Zone */}
+      <section>
+        <h2 className="text-[11px] uppercase tracking-wider text-ease-red/60 mb-3">Gefahrenzone</h2>
+        <div className="glass rounded-2xl p-5 border border-ease-red/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white">Konto l\u00F6schen</p>
+              <p className="text-xs text-ease-muted mt-0.5">Unwiderruflich \u2014 alle Daten werden gel\u00F6scht</p>
+            </div>
+            <span className="text-[11px] text-white/40 bg-white/[0.04] px-3 py-1 rounded-full">
+              Bald verf\u00FCgbar
+            </span>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -478,8 +214,20 @@ function SettingsContent({ projectSlug }) {
 function InfoRow({ label, value, mono }) {
   return (
     <div className="flex items-center justify-between py-1">
-      <span className="text-xs text-gray-500">{label}</span>
-      <span className={`text-sm ${mono ? 'font-mono text-gray-400 text-xs' : 'text-ease-cream'}`}>{value}</span>
+      <span className="text-xs text-ease-muted">{label}</span>
+      <span className={`text-sm ${mono ? 'font-mono text-white/60 text-xs' : 'text-white'}`}>{value}</span>
+    </div>
+  );
+}
+
+function UsageStat({ label, value, limit }) {
+  return (
+    <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl px-4 py-3">
+      <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1">{label}</p>
+      <p className="text-xl font-semibold text-white">
+        {value}
+        <span className="text-xs text-white/30 font-normal ml-1">/ {limit}</span>
+      </p>
     </div>
   );
 }

@@ -10,7 +10,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const projectSlug = searchParams.get('project_slug') || 'ease';
   const projectId = searchParams.get('project_id') || null;
-  const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/settings`;
+  const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/integrations`;
 
   try {
     // Standard OAuth flow — requires shop domain

@@ -118,7 +118,7 @@ export default function ClarityPage({ params }) {
   };
 
   return (
-    <div className="px-8 py-8 max-w-6xl">
+    <div className="px-8 py-8 max-w-[1800px] mx-auto w-full">
       <div className="flex items-center gap-2 text-sm mb-1">
         <Link href="/dashboard" className="text-gray-500 hover:text-ease-cream transition-colors">Dashboard</Link>
         <span className="text-gray-600">/</span>

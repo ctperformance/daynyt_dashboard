@@ -36,7 +36,7 @@ export default function QuizPage({ params }) {
   // If quiz add-on is not enabled for this project
   if (project && !quizEnabled) {
     return (
-      <div className="px-8 py-8 max-w-7xl">
+      <div className="px-8 py-8 max-w-[1800px] mx-auto w-full">
         <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
           <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
           <span className="text-white/20">/</span>
@@ -80,7 +80,7 @@ export default function QuizPage({ params }) {
   // Loading state
   if (isLoading && !liveData) {
     return (
-      <div className="px-8 py-8 max-w-7xl">
+      <div className="px-8 py-8 max-w-[1800px] mx-auto w-full">
         {breadcrumb}
         <h1 className="text-2xl font-bold tracking-tight mb-8 animate-fade-in">{quizName}</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -102,7 +102,7 @@ export default function QuizPage({ params }) {
   // Empty state — Quiz is always "connected" (webhook), just no data yet
   if (!hasData) {
     return (
-      <div className="px-8 py-8 max-w-7xl">
+      <div className="px-8 py-8 max-w-[1800px] mx-auto w-full">
         {breadcrumb}
         <h1 className="text-2xl font-bold tracking-tight mb-8 animate-fade-in">{quizName}</h1>
 
@@ -157,7 +157,7 @@ export default function QuizPage({ params }) {
   })();
 
   return (
-    <div className="px-8 py-8 max-w-7xl">
+    <div className="px-8 py-8 max-w-[1800px] mx-auto w-full">
       {breadcrumb}
 
       {/* Header */}

@@ -472,4 +472,37 @@ export async function revokeToken(provider, token, options = {}) {
   throw new Error(`Revoke not supported for provider: ${provider}`);
 }
 
+export function encodeOAuthState({ projectId, projectSlug }) {
+  const payload = JSON.stringify({
+    csrf: crypto.randomUUID(),
+    project_id: projectId || null,
+    project_slug: projectSlug || null,
+  });
+  return Buffer.from(payload).toString('base64url');
+}
+
+export function decodeOAuthState(stateString) {
+  try {
+    const decoded = Buffer.from(stateString || '', 'base64url').toString();
+    const parsed = JSON.parse(decoded);
+    return {
+      project_id: parsed.project_id || null,
+      project_slug: parsed.project_slug || null,
+    };
+  } catch {
+    return { project_id: null, project_slug: null };
+  }
+}
+
+export async function resolveProjectId(supabase, { project_id, project_slug }) {
+  if (project_id) return project_id;
+  if (!project_slug) return null;
+  const { data } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('slug', project_slug)
+    .single();
+  return data?.id || null;
+}
+
 export { PROVIDERS };

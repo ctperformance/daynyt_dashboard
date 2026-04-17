@@ -7,6 +7,8 @@ import { useAuth } from '@/components/AuthProvider';
 import KpiCard from '@/components/KpiCard';
 import { evaluateMetric, BENCHMARKS } from '@/lib/meta-benchmarks';
 import { fetcher, swrLiveOptions, swrStaticOptions } from '@/lib/fetcher';
+import { buildClarityIndex, matchClarityToRow } from '@/lib/clarity-match';
+import AdDetailDrawer from '@/components/AdDetailDrawer';
 
 const DATE_RANGES = [
   { key: 'today', label: 'Heute', days: 0 },
@@ -94,6 +96,17 @@ const METRIC_SECTIONS = [
       { key: 'video_view_rate_100', label: 'VVR 100%', format: '%' },
     ],
   },
+  {
+    label: 'Qualit\u00E4t',
+    metrics: [
+      { key: 'clarity_sessions', label: 'Sessions', format: 'int', clarity: true },
+      { key: 'clarity_avg_duration', label: '\u00D8 Dauer', format: 'sec', clarity: true },
+      { key: 'clarity_avg_scroll', label: 'Scroll', format: '%', clarity: true },
+      { key: 'clarity_engagement_rate', label: 'Engagement', format: '%', clarity: true },
+      { key: 'clarity_rage_clicks', label: 'Rage', format: 'int', clarity: true },
+      { key: 'clarity_quality_score', label: 'Score', format: 'score', clarity: true },
+    ],
+  },
 ];
 
 function fmt(n, decimals = 2) {
@@ -111,8 +124,25 @@ function formatValue(value, format) {
     case '%': return `${fmt(value)}%`;
     case 'int': return fmtInt(value);
     case 'dec1': return fmt(value, 1);
+    case 'sec': return `${fmt(value, 1)}s`;
+    case 'score': return String(Math.round(Number(value) || 0));
     default: return String(value);
   }
+}
+
+function QualityScoreCell({ value }) {
+  if (value === null || value === undefined) return <span className="text-white/20">\u2014</span>;
+  const score = Math.round(Number(value) || 0);
+  const cls = score >= 70
+    ? 'bg-ease-green/10 text-ease-green'
+    : score >= 40
+    ? 'bg-yellow-400/10 text-yellow-400'
+    : 'bg-ease-red/10 text-ease-red';
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${cls}`}>
+      {score}
+    </span>
+  );
 }
 
 // Benchmark color classes
@@ -284,6 +314,7 @@ export default function AdsPage({ params }) {
   const [selectedAdset, setSelectedAdset] = useState(null);
   const [hoveredAd, setHoveredAd] = useState(null);
   const [mouseY, setMouseY] = useState(0);
+  const [selectedAd, setSelectedAd] = useState(null);
 
   const [dateRange, setDateRange] = useState('30d');
   const [customFrom, setCustomFrom] = useState('');
@@ -334,6 +365,7 @@ export default function AdsPage({ params }) {
     { ...swrLiveOptions, dedupingInterval: 120000 },
   );
   const cachedClarityData = clarityRaw?.data || clarityData;
+  const clarityIndex = cachedClarityData ? buildClarityIndex(cachedClarityData) : null;
 
   // Sync campaign errors
   const campaignErrorMsg = campaignError?.info?.token_expired
@@ -427,7 +459,7 @@ export default function AdsPage({ params }) {
   const totalCpa = totals?.purchases > 0 ? totals.spend / totals.purchases : 0;
 
   return (
-    <div className="px-8 py-8 max-w-[1600px]">
+    <div className="px-8 py-8 max-w-[1800px] mx-auto w-full">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
         <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>
@@ -517,9 +549,9 @@ export default function AdsPage({ params }) {
             <span className="text-xl text-ease-muted">&#9678;</span>
           </div>
           <h2 className="text-base font-semibold mb-2">Keine Werbeplattformen verbunden</h2>
-          <p className="text-sm text-ease-muted mb-6">Verbinde Meta Ads unter Einstellungen.</p>
-          <Link href={`/dashboard/${projectSlug}/settings`} className="text-xs px-5 py-2 rounded-lg bg-white/10 text-white hover:bg-white/15 transition-all">
-            Einstellungen
+          <p className="text-sm text-ease-muted mb-6">Verbinde Meta Ads unter Integrationen.</p>
+          <Link href={`/dashboard/${projectSlug}/integrations`} className="text-xs px-5 py-2 rounded-lg bg-white/10 text-white hover:bg-white/15 transition-all">
+            Zu Integrationen
           </Link>
         </div>
       )}
@@ -617,18 +649,29 @@ export default function AdsPage({ params }) {
                       const canDrill = (viewLevel === 'campaigns' || viewLevel === 'adsets');
                       const isAdsLevel = viewLevel === 'ads';
                       const hasPreview = isAdsLevel && row.creative_thumbnail;
+                      const clarityMatch = matchClarityToRow(row, clarityIndex, viewLevel);
+                      const mergedRow = clarityMatch ? {
+                        ...row,
+                        clarity_sessions: clarityMatch.sessions,
+                        clarity_avg_duration: clarityMatch.avg_duration,
+                        clarity_avg_scroll: clarityMatch.avg_scroll,
+                        clarity_engagement_rate: clarityMatch.engagement_rate,
+                        clarity_rage_clicks: clarityMatch.rage_clicks,
+                        clarity_quality_score: clarityMatch.quality_score,
+                      } : row;
                       return (
                         <tr
                           key={row.id || idx}
                           onClick={() => {
                             if (viewLevel === 'campaigns') drillIntoCampaign(row);
                             else if (viewLevel === 'adsets') drillIntoAdset(row);
+                            else if (viewLevel === 'ads') setSelectedAd({ ad: row, clarity: clarityMatch });
                           }}
                           onMouseEnter={() => isAdsLevel && setHoveredAd(row.id)}
                           onMouseLeave={() => isAdsLevel && setHoveredAd(null)}
                           onMouseMove={(e) => isAdsLevel && setMouseY(e.clientY)}
                           className={`border-b border-white/[0.03] table-row-hover ${
-                            canDrill ? 'cursor-pointer' : ''
+                            canDrill || isAdsLevel ? 'cursor-pointer' : ''
                           }`}
                           style={{ animationDelay: `${idx * 30}ms` }}
                         >
@@ -655,7 +698,11 @@ export default function AdsPage({ params }) {
                           </td>
                           {activeMetrics.map((m) => (
                             <td key={m.key} className="text-right px-2.5 py-3 whitespace-nowrap">
-                              <MetricCell value={row[m.key]} metricKey={m.key} format={m.format} />
+                              {m.format === 'score' ? (
+                                <QualityScoreCell value={mergedRow[m.key]} />
+                              ) : (
+                                <MetricCell value={mergedRow[m.key]} metricKey={m.key} format={m.format} />
+                              )}
                             </td>
                           ))}
                         </tr>
@@ -728,6 +775,15 @@ export default function AdsPage({ params }) {
             <span>E-Commerce DACH Benchmarks</span>
           </div>
         </div>
+      )}
+
+      {selectedAd && (
+        <AdDetailDrawer
+          ad={selectedAd.ad}
+          clarity={selectedAd.clarity}
+          onClose={() => setSelectedAd(null)}
+          projectSlug={projectSlug}
+        />
       )}
     </div>
   );

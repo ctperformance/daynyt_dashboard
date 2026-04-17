@@ -195,7 +195,7 @@ export default function ProjectOverview({ params }) {
   };
 
   return (
-    <div className="px-8 py-8 max-w-6xl">
+    <div className="px-8 py-8 max-w-[1800px] mx-auto w-full">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
         <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">
@@ -230,69 +230,187 @@ export default function ProjectOverview({ params }) {
         )}
       </div>
 
-      {/* Channel Performance Grid */}
-      <h2 className="text-sm font-semibold mb-4">
-        Kanal-Performance
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        {loading ? (
-          <LoadingSkeleton variant="card" count={4} />
-        ) : (
-          Object.entries(CHANNEL_CONFIG).map(([key, config]) => {
-            const connected = integrationStatus[key]?.connected;
-            const data = channelData[key];
-            return (
-              <ChannelPerformanceCard
-                key={key}
-                channelKey={key}
-                config={config}
-                connected={connected}
-                data={data}
-                projectSlug={projectSlug}
-              />
-            );
-          })
-        )}
-      </div>
+      {/* Command-center split: 2/3 main + 1/3 sidebar */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+        {/* Main column (2/3) */}
+        <div className="xl:col-span-2 space-y-6">
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold">Kanal-Performance</h2>
+              <Link href={`/dashboard/${projectSlug}/ads`} className="text-xs text-ease-muted hover:text-white transition-colors">
+                Alle Ads \u2192
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+              {loading ? (
+                <LoadingSkeleton variant="card" count={4} />
+              ) : (
+                Object.entries(CHANNEL_CONFIG).map(([key, config]) => {
+                  const connected = integrationStatus[key]?.connected;
+                  const data = channelData[key];
+                  return (
+                    <ChannelPerformanceCard
+                      key={key}
+                      channelKey={key}
+                      config={config}
+                      connected={connected}
+                      data={data}
+                      projectSlug={projectSlug}
+                    />
+                  );
+                })
+              )}
+            </div>
+          </section>
 
-      {/* Quick Stats Row */}
-      <h2 className="text-sm font-semibold mb-4">
-        Schnell-Statistiken
-      </h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-        <div className="glass rounded-2xl px-5 py-4">
-          <p className="text-[10px] text-white/30 uppercase mb-1">Quiz-Leads</p>
-          <p className="text-2xl font-bold">
-            {quizStats?.submissions?.length ?? '--'}
-          </p>
+          <section>
+            <h2 className="text-sm font-semibold mb-4">Schnell-Statistiken</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="glass rounded-2xl px-5 py-4">
+                <p className="text-[10px] text-white/30 uppercase mb-1">Quiz-Leads</p>
+                <p className="text-2xl font-bold">
+                  {quizStats?.submissions?.length ?? '--'}
+                </p>
+              </div>
+              <div className="glass rounded-2xl px-5 py-4">
+                <p className="text-[10px] text-white/30 uppercase mb-1">E-Mail Subscribers</p>
+                <p className="text-2xl font-bold">
+                  {channelData.klaviyo?.subscribers ? fmt(channelData.klaviyo.subscribers) : '--'}
+                </p>
+                {!integrationStatus.klaviyo?.connected && (
+                  <p className="text-[11px] text-white/20 mt-0.5">Klaviyo verbinden</p>
+                )}
+              </div>
+              <div className="glass rounded-2xl px-5 py-4">
+                <p className="text-[10px] text-white/30 uppercase mb-1">Conversion Rate</p>
+                <p className="text-2xl font-bold">
+                  {shopifyOrders > 0 && (channelData.google?.clicks || 0) > 0
+                    ? ((shopifyOrders / channelData.google.clicks) * 100).toFixed(1) + '%'
+                    : '--'}
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
-        <div className="glass rounded-2xl px-5 py-4">
-          <p className="text-[10px] text-white/30 uppercase mb-1">E-Mail Subscribers</p>
-          <p className="text-2xl font-bold">
-            {channelData.klaviyo?.subscribers ? fmt(channelData.klaviyo.subscribers) : '--'}
-          </p>
-          {!integrationStatus.klaviyo?.connected && (
-            <p className="text-[11px] text-white/20 mt-0.5">Klaviyo verbinden</p>
-          )}
-        </div>
-        <div className="glass rounded-2xl px-5 py-4">
-          <p className="text-[10px] text-white/30 uppercase mb-1">Conversion Rate</p>
-          <p className="text-2xl font-bold">
-            {shopifyOrders > 0 && (channelData.google?.clicks || 0) > 0
-              ? ((shopifyOrders / channelData.google.clicks) * 100).toFixed(1) + '%'
-              : '--'}
-          </p>
-        </div>
+
+        {/* Sidebar column (1/3) */}
+        <aside className="space-y-6">
+          <IntegrationHealthPanel status={integrationStatus} projectSlug={projectSlug} />
+          <QuickActionsPanel projectSlug={projectSlug} />
+        </aside>
       </div>
 
       {/* Integration Hint */}
       <div className="glass rounded-2xl p-6 border-dashed text-center">
         <p className="text-sm text-ease-muted">
           Weitere Integrationen? Verbinde neue Datenquellen unter{' '}
-          <Link href={`/dashboard/${projectSlug}/settings`} className="text-white hover:text-white/70">
-            Einstellungen
+          <Link href={`/dashboard/${projectSlug}/integrations`} className="text-white hover:text-white/70">
+            Integrationen
           </Link>
         </p>
+      </div>
+    </div>
+  );
+}
+
+function IntegrationHealthPanel({ status, projectSlug }) {
+  const providers = ['meta', 'google', 'tiktok', 'snapchat', 'bing', 'shopify', 'klaviyo', 'clarity'];
+  const needAttention = providers.filter((p) => status[p]?.needs_reauth || status[p]?.expiring_soon);
+  const connected = providers.filter((p) => status[p]?.connected && !status[p]?.needs_reauth).length;
+  const missing = providers.filter((p) => !status[p]?.connected);
+
+  return (
+    <div className="glass rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/[0.06]">
+        <h3 className="text-sm font-semibold">Integration-Status</h3>
+        <p className="text-xs text-ease-muted mt-0.5">
+          {connected} von {providers.length} verbunden
+        </p>
+      </div>
+      <div className="divide-y divide-white/[0.04]">
+        {needAttention.length > 0 && (
+          <div className="px-5 py-3 bg-ease-red/5">
+            <p className="text-[10px] uppercase tracking-wider text-ease-red font-semibold mb-2">
+              Aktion erforderlich
+            </p>
+            {needAttention.map((p) => (
+              <Link
+                key={p}
+                href={`/dashboard/${projectSlug}/integrations`}
+                className="flex items-center justify-between py-1.5 text-xs hover:text-white transition-colors"
+              >
+                <span className="capitalize text-ease-red">{p}</span>
+                <span className="text-[10px] text-white/40">
+                  {status[p]?.needs_reauth ? 'Neu verbinden' : 'L\u00E4uft bald ab'}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+        <div className="px-5 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-white/30 font-semibold mb-2">Verbunden</p>
+          {providers.filter((p) => status[p]?.connected && !status[p]?.needs_reauth).map((p) => (
+            <div key={p} className="flex items-center justify-between py-1 text-xs">
+              <span className="capitalize text-white/70">{p}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-ease-green" />
+            </div>
+          ))}
+          {connected === 0 && <p className="text-xs text-white/30">Noch nichts verbunden.</p>}
+        </div>
+        {missing.length > 0 && (
+          <div className="px-5 py-3">
+            <p className="text-[10px] uppercase tracking-wider text-white/30 font-semibold mb-2">Nicht verbunden</p>
+            {missing.slice(0, 4).map((p) => (
+              <Link
+                key={p}
+                href={`/dashboard/${projectSlug}/integrations`}
+                className="flex items-center justify-between py-1 text-xs text-white/40 hover:text-white transition-colors"
+              >
+                <span className="capitalize">{p}</span>
+                <span className="text-[10px]">Verbinden \u2192</span>
+              </Link>
+            ))}
+            {missing.length > 4 && (
+              <Link
+                href={`/dashboard/${projectSlug}/integrations`}
+                className="text-[11px] text-white/30 hover:text-white mt-1 block"
+              >
+                +{missing.length - 4} weitere
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function QuickActionsPanel({ projectSlug }) {
+  const actions = [
+    { label: 'Ads Manager', href: `/dashboard/${projectSlug}/ads`, icon: '\u25B6' },
+    { label: 'Ad Creator', href: `/dashboard/${projectSlug}/creatives`, icon: '\u2726' },
+    { label: 'Integrationen', href: `/dashboard/${projectSlug}/integrations`, icon: '\u29BE' },
+    { label: 'Brand Hub', href: `/dashboard/${projectSlug}/brand`, icon: '\u25C6' },
+  ];
+  return (
+    <div className="glass rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/[0.06]">
+        <h3 className="text-sm font-semibold">Schnellzugriff</h3>
+      </div>
+      <div className="p-2">
+        {actions.map((a) => (
+          <Link
+            key={a.href}
+            href={a.href}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors text-sm"
+          >
+            <span className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center text-white/50 text-sm">
+              {a.icon}
+            </span>
+            <span className="flex-1 text-white/70">{a.label}</span>
+            <span className="text-white/20">\u2192</span>
+          </Link>
+        ))}
       </div>
     </div>
   );
@@ -301,7 +419,7 @@ export default function ProjectOverview({ params }) {
 function ChannelPerformanceCard({ channelKey, config, connected, data, projectSlug }) {
   const href = connected
     ? `/dashboard/${projectSlug}${config.segment}`
-    : `/dashboard/${projectSlug}/settings`;
+    : `/dashboard/${projectSlug}/integrations`;
 
   if (!connected) {
     return (

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { exchangeCode } from '@/lib/oauth';
+import { exchangeCode, decodeOAuthState, resolveProjectId } from '@/lib/oauth';
 import { createServiceClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
@@ -8,13 +8,16 @@ export const fetchCache = 'force-no-store';
 
 export async function GET(request) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const settingsUrl = `${baseUrl}/dashboard/ease/settings`;
 
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
+
+    const { project_id: stateProjectId, project_slug: stateProjectSlug } = decodeOAuthState(state);
+    const projectSlug = stateProjectSlug || 'ease';
+    const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/integrations`;
 
     if (error) {
       console.error('Klaviyo OAuth denied:', error);
@@ -25,7 +28,6 @@ export async function GET(request) {
       return NextResponse.redirect(`${settingsUrl}?error=klaviyo_missing_params`);
     }
 
-    // Validate state against cookie
     const cookieStore = await cookies();
     const storedState = cookieStore.get('oauth_state_klaviyo')?.value;
     cookieStore.delete('oauth_state_klaviyo');
@@ -34,7 +36,12 @@ export async function GET(request) {
       return NextResponse.redirect(`${settingsUrl}?error=klaviyo_state_mismatch`);
     }
 
-    // Exchange code for tokens
+    const supabase = createServiceClient();
+    const projectId = await resolveProjectId(supabase, { project_id: stateProjectId, project_slug: stateProjectSlug });
+    if (!projectId) {
+      return NextResponse.redirect(`${settingsUrl}?error=klaviyo_no_project`);
+    }
+
     const tokenData = await exchangeCode('klaviyo', code);
     const accessToken = tokenData.access_token;
     const refreshToken = tokenData.refresh_token || null;
@@ -44,7 +51,6 @@ export async function GET(request) {
       return NextResponse.redirect(`${settingsUrl}?error=klaviyo_no_token`);
     }
 
-    // Fetch account info
     let accountInfo = {};
     try {
       const accountRes = await fetch('https://a.klaviyo.com/api/accounts/', {
@@ -68,10 +74,6 @@ export async function GET(request) {
     } catch (accErr) {
       console.warn('Could not fetch Klaviyo account info:', accErr.message);
     }
-
-    // Store in Supabase
-    const supabase = createServiceClient();
-    const projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
 
     const tokenExpiresAt = expiresIn
       ? new Date(Date.now() + expiresIn * 1000).toISOString()
@@ -105,6 +107,6 @@ export async function GET(request) {
     return NextResponse.redirect(`${settingsUrl}?connected=klaviyo`);
   } catch (error) {
     console.error('Klaviyo OAuth callback error:', error);
-    return NextResponse.redirect(`${settingsUrl}?error=klaviyo_callback_failed`);
+    return NextResponse.redirect(`${baseUrl}/dashboard/ease/integrations?error=klaviyo_callback_failed`);
   }
 }

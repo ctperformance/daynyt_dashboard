@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getValidMetaToken, handleMetaApiError } from '@/lib/meta-token';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -17,23 +18,14 @@ export async function GET(request) {
       );
     }
 
-    // Fetch token from database
     const supabase = createServiceClient();
-    const { data: integration, error: dbError } = await supabase
-      .from('integrations_oauth')
-      .select('access_token, provider_account_id, provider_metadata')
-      .eq('project_id', projectId)
-      .eq('provider', 'meta')
-      .single();
-
-    if (dbError || !integration) {
-      return NextResponse.json(
-        { error: 'Meta not connected', connected: false },
-        { status: 404 }
-      );
+    const tokenResult = await getValidMetaToken(supabase, projectId);
+    if (!tokenResult.ok) {
+      return NextResponse.json(tokenResult, { status: tokenResult.status });
     }
-
-    const { access_token, provider_account_id, provider_metadata } = integration;
+    const integration = tokenResult.integration;
+    let { access_token } = integration;
+    const { provider_account_id, provider_metadata } = integration;
     const adAccountId = provider_account_id ? `act_${provider_account_id}` : null;
 
     if (!adAccountId) {
@@ -57,24 +49,27 @@ export async function GET(request) {
 
     const insightsRes = await fetch(insightsUrl);
 
+    let insightsData;
     if (!insightsRes.ok) {
       const err = await insightsRes.json().catch(() => ({}));
       console.error('Meta API error:', err);
-
-      if (insightsRes.status === 401 || err?.error?.code === 190) {
-        return NextResponse.json(
-          { error: 'Token expired', token_expired: true },
-          { status: 401 }
-        );
+      const authResult = await handleMetaApiError(supabase, projectId, err, insightsRes.status);
+      if (authResult.retry && authResult.new_token) {
+        access_token = authResult.new_token;
+        const retryUrl = `https://graph.facebook.com/v21.0/${adAccountId}/insights?fields=${fields}&time_range=${timeRange}&access_token=${access_token}`;
+        const retryRes = await fetch(retryUrl);
+        if (!retryRes.ok) {
+          return NextResponse.json({ error: 'Meta token expired. Please reconnect.', token_expired: true }, { status: 401 });
+        }
+        insightsData = await retryRes.json();
+      } else if (authResult.token_expired) {
+        return NextResponse.json({ error: 'Meta token expired. Please reconnect.', token_expired: true }, { status: 401 });
+      } else {
+        return NextResponse.json({ error: 'Failed to fetch Meta stats' }, { status: 502 });
       }
-
-      return NextResponse.json(
-        { error: 'Failed to fetch Meta stats' },
-        { status: 502 }
-      );
+    } else {
+      insightsData = await insightsRes.json();
     }
-
-    const insightsData = await insightsRes.json();
     const row = insightsData.data?.[0] || {};
 
     const spend = parseFloat(row.spend || '0');

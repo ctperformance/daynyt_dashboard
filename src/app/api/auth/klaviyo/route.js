@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getAuthUrl } from '@/lib/oauth';
+import { getAuthUrl, encodeOAuthState } from '@/lib/oauth';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const state = crypto.randomUUID();
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get('project_id');
+    const projectSlug = searchParams.get('project_slug') || 'ease';
+    const state = encodeOAuthState({ projectId, projectSlug });
 
     const cookieStore = await cookies();
     cookieStore.set('oauth_state_klaviyo', state, {
@@ -23,7 +26,7 @@ export async function GET() {
   } catch (error) {
     console.error('Klaviyo OAuth init error:', error);
     return NextResponse.redirect(
-      new URL('/dashboard/ease/settings?error=klaviyo_init_failed', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
+      new URL('/dashboard/ease/integrations?error=klaviyo_init_failed', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
     );
   }
 }

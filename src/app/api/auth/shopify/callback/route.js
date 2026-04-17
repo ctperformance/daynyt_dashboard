@@ -68,7 +68,7 @@ export async function GET(request) {
       }
     } catch {}
 
-    const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/settings`;
+    const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/integrations`;
 
     if (!code || !shop) {
       return NextResponse.redirect(`${settingsUrl}?error=shopify_missing_params`);

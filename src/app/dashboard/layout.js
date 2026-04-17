@@ -9,19 +9,16 @@ export default function DashboardLayout({ children }) {
   const router = useRouter();
   const { user, userProjects, isAdmin, isClient, signOut, loading } = useAuth();
 
-  // Extract active project slug from URL
   const pathParts = pathname.split('/');
   const projectSlugFromUrl = pathParts[2] && pathParts[2] !== '' ? pathParts[2] : null;
   const activeProject = userProjects.find((p) => p.slug === projectSlugFromUrl);
 
-  // For client users with exactly one project, auto-redirect
   if (!loading && isClient && userProjects.length === 1 && !projectSlugFromUrl) {
     router.replace(`/dashboard/${userProjects[0].slug}`);
   }
 
   return (
     <div className="min-h-screen bg-ease-bg flex">
-      {/* Sidebar */}
       <aside className="w-56 border-r border-ease-border flex flex-col shrink-0 sticky top-0 h-screen">
         {/* Logo */}
         <div className="px-5 py-5 border-b border-ease-border">
@@ -76,18 +73,16 @@ export default function DashboardLayout({ children }) {
           </div>
         )}
 
-        {/* Channel Nav — only shown when a project is active */}
         {activeProject && <ClientNav projectSlug={activeProject.slug} pathname={pathname} addons={activeProject.addons} />}
 
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* User Info + Sign Out */}
-        <div className="px-3 py-4 border-t border-ease-border space-y-2">
+        {/* User Info + Settings Gear + Sign Out */}
+        <div className="px-3 py-4 border-t border-ease-border">
           {user && (
-            <div className="px-3 py-2">
-              <div className="flex items-center gap-2.5 mb-2">
-                <div className="w-7 h-7 rounded-full bg-ease-accent/20 flex items-center justify-center text-xs font-bold text-ease-accent">
+            <div>
+              <div className="flex items-center gap-2.5 px-3 py-2">
+                <div className="w-7 h-7 rounded-full bg-ease-accent/20 flex items-center justify-center text-xs font-bold text-ease-accent shrink-0">
                   {(user.email || '?').charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -96,10 +91,24 @@ export default function DashboardLayout({ children }) {
                     {isAdmin ? 'Admin' : 'Kunde'}
                   </p>
                 </div>
+                {activeProject && (
+                  <Link
+                    href={`/dashboard/${activeProject.slug}/settings`}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0 transition-colors ${
+                      pathname.endsWith('/settings')
+                        ? 'bg-white/10 text-ease-cream'
+                        : 'text-ease-muted hover:text-ease-cream hover:bg-white/5'
+                    }`}
+                    title="Einstellungen"
+                    aria-label="Einstellungen"
+                  >
+                    &#9881;
+                  </Link>
+                )}
               </div>
               <button
                 onClick={signOut}
-                className="w-full text-left text-xs text-gray-500 hover:text-ease-red px-0 py-1 transition-colors"
+                className="w-full text-left text-xs text-gray-500 hover:text-ease-red px-3 py-1 transition-colors"
               >
                 Abmelden
               </button>
@@ -108,7 +117,6 @@ export default function DashboardLayout({ children }) {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 min-w-0">
         {children}
       </main>
@@ -116,25 +124,17 @@ export default function DashboardLayout({ children }) {
   );
 }
 
-// Base nav items — always visible
+// Simplified nav — channels are hidden behind the Ads Manager / Integrations hub.
 const BASE_NAV_SECTIONS = [
   {
-    label: 'Kanäle',
+    label: 'Dashboard',
     items: [
-      { segment: '', label: 'Übersicht', icon: '\u229E' },
+      { segment: '', label: '\u00DCbersicht', icon: '\u229E' },
       // Quiz is inserted here dynamically if addon is enabled
-      { segment: '/meta', label: 'Meta Ads', icon: '\u25CE' },
-      { segment: '/google', label: 'Google Ads', icon: '\u25C9' },
-      { segment: '/shopify', label: 'Shopify', icon: '\u2B21' },
-      { segment: '/tiktok', label: 'TikTok Ads', icon: '\u266A' },
-      { segment: '/snapchat', label: 'Snapchat Ads', icon: '\u25C7' },
-      { segment: '/bing', label: 'Bing Ads', icon: '\u25A3' },
-      { segment: '/email', label: 'E-Mail', icon: '\u2709' },
-      { segment: '/clarity', label: 'Website Analytics', icon: '\u25CE' },
     ],
   },
   {
-    label: 'Tools',
+    label: 'Werbung & Inhalte',
     items: [
       { segment: '/ads', label: 'Ads Manager', icon: '\u25B6' },
       { segment: '/creatives', label: 'Ad Creator', icon: '\u270E' },
@@ -142,22 +142,20 @@ const BASE_NAV_SECTIONS = [
     ],
   },
   {
-    label: 'Konto',
+    label: 'Daten',
     items: [
-      { segment: '/settings', label: 'Einstellungen', icon: '\u2699' },
+      { segment: '/integrations', label: 'Integrationen', icon: '\u29BE' },
     ],
   },
 ];
 
-// Build nav sections with active add-ons injected
 function buildNavSections(addons) {
   const sections = JSON.parse(JSON.stringify(BASE_NAV_SECTIONS));
-  const channelSection = sections.find(s => s.label === 'Kanäle');
+  const dashSection = sections.find((s) => s.label === 'Dashboard');
 
-  // Quiz add-on — insert after Übersicht if enabled
   if (addons?.quiz?.enabled) {
     const quizName = addons.quiz.name || 'Quiz';
-    channelSection.items.splice(1, 0, {
+    dashSection.items.push({
       segment: '/quiz',
       label: quizName,
       icon: '\u2726',

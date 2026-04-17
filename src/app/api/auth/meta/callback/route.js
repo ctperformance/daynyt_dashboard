@@ -39,10 +39,10 @@ export async function GET(request) {
     }
 
     if (!projectId) {
-      return NextResponse.redirect(`${baseUrl}/dashboard/${projectSlug}/settings?error=meta_no_project`);
+      return NextResponse.redirect(`${baseUrl}/dashboard/${projectSlug}/integrations?error=meta_no_project`);
     }
 
-    const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/settings`;
+    const settingsUrl = `${baseUrl}/dashboard/${projectSlug}/integrations`;
 
     // User denied access
     if (error) {
@@ -153,6 +153,6 @@ export async function GET(request) {
     return NextResponse.redirect(`${settingsUrl}?connected=meta`);
   } catch (error) {
     console.error('Meta OAuth callback error:', error);
-    return NextResponse.redirect(`${baseUrl}/dashboard/ease/settings?error=meta_callback_failed`);
+    return NextResponse.redirect(`${baseUrl}/dashboard/ease/integrations?error=meta_callback_failed`);
   }
 }

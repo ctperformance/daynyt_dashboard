@@ -71,7 +71,7 @@ export default function DashboardHome() {
   }
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-8 py-8 max-w-[1800px] mx-auto w-full">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-ease-cream">Dashboard</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -81,7 +81,7 @@ export default function DashboardHome() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {userProjects.map((project) => (
           <Link
             key={project.slug}
@@ -114,7 +114,7 @@ export default function DashboardHome() {
 
         {/* No projects */}
         {userProjects.length === 0 && (
-          <div className="col-span-2 bg-ease-card border border-ease-border rounded-xl p-8 text-center">
+          <div className="col-span-full bg-ease-card border border-ease-border rounded-xl p-8 text-center">
             <p className="text-gray-500 text-sm mb-2">Noch keine Projekte vorhanden.</p>
             {isAdmin && (
               <p className="text-gray-600 text-xs">Erstelle dein erstes Projekt um loszulegen.</p>

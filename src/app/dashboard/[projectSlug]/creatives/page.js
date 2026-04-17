@@ -184,7 +184,7 @@ export default function CreativesPage({ params }) {
   };
 
   return (
-    <div className="px-8 py-8 max-w-6xl">
+    <div className="px-8 py-8 max-w-[1800px] mx-auto w-full">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs mb-2 animate-fade-in">
         <Link href="/dashboard" className="text-ease-muted hover:text-white transition-colors">Dashboard</Link>

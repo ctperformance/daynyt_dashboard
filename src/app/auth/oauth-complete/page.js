@@ -31,7 +31,7 @@ function OAuthCompleteInner() {
 
     // If we can't close, redirect to settings
     setTimeout(() => {
-      window.location.href = '/dashboard/ease/settings';
+      window.location.href = '/dashboard/ease/integrations';
     }, 1500);
   }, [provider, status, error]);
 
